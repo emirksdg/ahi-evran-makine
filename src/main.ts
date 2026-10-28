@@ -1,6 +1,8 @@
 import {
+  bolognaSource,
   courses,
   staff,
+  yokAcademicSearchSource,
 } from "./data";
 import { filterCourses, filterStaff } from "./search";
 import type { Course, StaffMember } from "./types";
@@ -22,7 +24,14 @@ function requiredElement<T extends HTMLElement>(selector: string): T {
 }
 
 function createStaffCard(person: StaffMember): HTMLElement {
-  const card = element("article", "staff-card");
+  const card = element("a", "staff-card");
+  card.href = yokAcademicSearchSource;
+  card.target = "_blank";
+  card.rel = "noreferrer";
+  card.setAttribute(
+    "aria-label",
+    `${person.name}, ${person.title}, ${person.department}. YÖK Akademik sayfasını aç (yeni sekmede açılır)`,
+  );
   const avatar = element("span", "staff-card__avatar");
   avatar.setAttribute("aria-hidden", "true");
   avatar.textContent = person.initials;
@@ -34,14 +43,21 @@ function createStaffCard(person: StaffMember): HTMLElement {
   name.textContent = person.name;
   const department = element("p", "staff-card__department");
   department.textContent = person.department;
+  const linkLabel = element("span", "staff-card__link");
+  linkLabel.textContent = "YÖK Akademik ↗";
 
-  content.append(title, name, department);
+  content.append(title, name, department, linkLabel);
   card.append(avatar, content);
   return card;
 }
 
 function createCourseCard(course: Course, index: number): HTMLElement {
-  const card = element("article", "course-card");
+  const card = element("button", "course-card");
+  card.type = "button";
+  card.addEventListener("click", () => {
+    courseDialogName.textContent = course.name;
+    courseDialog.showModal();
+  });
   const number = element("span", "course-card__number");
   number.textContent = String(index + 1).padStart(2, "0");
   const name = element("h3", "course-card__name");
@@ -66,6 +82,16 @@ const courseCount = requiredElement<HTMLElement>("#course-count");
 const courseEmpty = requiredElement<HTMLElement>("#course-empty");
 const staffStat = requiredElement<HTMLElement>("#staff-stat");
 const courseStat = requiredElement<HTMLElement>("#course-stat");
+const courseDialog = requiredElement<HTMLDialogElement>("#course-dialog");
+const courseDialogName = requiredElement<HTMLElement>("#course-dialog-name");
+const courseDialogClose = requiredElement<HTMLButtonElement>(
+  "#course-dialog-close",
+);
+const courseDialogLink = requiredElement<HTMLAnchorElement>(
+  "#course-dialog-link",
+);
+courseDialogLink.href = bolognaSource;
+courseDialogClose.addEventListener("click", () => courseDialog.close());
 
 const departments = [...new Set(staff.map((person) => person.department))].sort(
   (first, second) => first.localeCompare(second, "tr-TR"),

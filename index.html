@@ -252,6 +252,35 @@
       </section>
     </main>
 
+    <dialog
+      class="course-dialog"
+      id="course-dialog"
+      aria-labelledby="course-dialog-name"
+      aria-describedby="course-dialog-description"
+    >
+      <div class="course-dialog__header">
+        <p class="course-dialog__eyebrow">DERS BİLGİSİ</p>
+        <button
+          class="course-dialog__close"
+          id="course-dialog-close"
+          type="button"
+          aria-label="Pencereyi kapat"
+        >×</button>
+      </div>
+      <h2 id="course-dialog-name"></h2>
+      <p id="course-dialog-description">
+        Bu arşiv kaydında ders adı dışında açıklama bulunmuyor. Dersin güncel
+        içeriği, öğrenme çıktıları ve AKTS bilgileri için üniversitenin resmî
+        Bologna kataloğunu inceleyebilirsin.
+      </p>
+      <a
+        class="course-dialog__link"
+        id="course-dialog-link"
+        target="_blank"
+        rel="noreferrer"
+      >Resmî Bologna kataloğunu aç <span aria-hidden="true">↗</span></a>
+    </dialog>
+
     <footer class="site-footer">
       <a class="brand brand--footer" href="#top">
         <span class="brand__mark" aria-hidden="true">M<span>.</span></span>

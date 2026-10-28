@@ -8,6 +8,8 @@ export const courseAnnouncementSource =
   "https://mf.ahievran.edu.tr/arsiv-ogrenci-duyurulari/7290-mmf-2026-2027-guz-donemi-ders-programlari";
 export const bolognaSource =
   "https://obs.ahievran.edu.tr/oibs/bologna/index.aspx?lang=tr&curOp=showPac&curUnit=25&curSunit=7494";
+export const yokAcademicSearchSource =
+  "https://akademik.yok.gov.tr/AkademikArama/";
 
 export const staff: StaffMember[] = [
   {
