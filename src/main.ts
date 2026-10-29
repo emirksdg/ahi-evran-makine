@@ -117,6 +117,17 @@ const groupDescription =
   requiredElement<HTMLTextAreaElement>("#group-description");
 const groupFormStatus = requiredElement<HTMLElement>("#group-form-status");
 const accountDialog = requiredElement<HTMLDialogElement>("#account-dialog");
+requiredElement<HTMLButtonElement>("#create-group-button").addEventListener(
+  "click",
+  () => {
+    queueMicrotask(() => {
+      if (accountDialog.open || groupDialog.open) return;
+      requiredElement<HTMLElement>("#account-mode-description").textContent =
+        "Topluluk oluşturmak için önce giriş yap veya hesap oluştur.";
+      accountDialog.showModal();
+    });
+  },
+);
 courseDialogLink.href = bolognaSource;
 courseDialogClose.addEventListener("click", () => courseDialog.close());
 
