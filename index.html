@@ -9,6 +9,12 @@
     />
     <meta name="theme-color" content="#f6f5f0" />
     <title>Makine Mühendisliği | Ahi Evran üniversitesi</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <a class="skip-link" href="#main-content">Ana içeriğe geç</a>
@@ -21,13 +27,19 @@
         </span>
       </a>
       <nav class="site-nav" aria-label="Ana gezinme">
+        <a href="#topluluk">Topluluk</a>
         <a href="#akademisyenler">Akademisyenler</a>
         <a href="#dersler">Dersler</a>
         <a href="#bolum">Bölüm hakkında</a>
       </nav>
-      <a class="header-link" href="#akademisyenler">
-        Bölümü keşfet <span aria-hidden="true">↗</span>
-      </a>
+      <button class="header-link" id="login-button" type="button">
+        Giriş / kayıt <span aria-hidden="true">↗</span>
+      </button>
+      <div class="signed-in-controls" id="signed-in-controls" hidden>
+        <span class="signed-in-name" id="signed-in-name"></span>
+        <button class="header-link" id="profile-button" type="button">Profilim</button>
+        <button class="header-link" id="sign-out-button" type="button">Çıkış</button>
+      </div>
     </header>
 
     <main id="main-content">
@@ -43,16 +55,16 @@
             <span>Üretime dönüşür.</span>
           </h1>
           <p class="hero__intro">
-            Makine Mühendisliği bölümünün akademik kadrosunu ve ders
-            arşivini tek bir yerde keşfet.
+            Kampüsten fikirler, öğrenci toplulukları ve bölüm rehberi tek bir
+            yerde buluşuyor.
           </p>
           <div class="hero__actions">
-            <a class="button button--primary" href="#akademisyenler">
-              Akademisyenleri tanı
+            <a class="button button--primary" href="#topluluk">
+              Topluluğa göz at
               <span aria-hidden="true">↓</span>
             </a>
-            <a class="hero__text-link" href="#dersler">
-              Ders arşivine göz at <span aria-hidden="true">↗</span>
+            <a class="hero__text-link" href="#akademisyenler">
+              Bölüm rehberini keşfet <span aria-hidden="true">↗</span>
             </a>
           </div>
           <div class="hero__meta">
@@ -80,8 +92,7 @@
 
       <section class="intro-strip" aria-label="Bölüm özeti">
         <p>
-          Teoriyi <span>uygulamayla</span>, merakı <span>üretimle</span>
-          buluşturan bir mühendislik yolculuğu.
+          Kampüsten <span>fikirler</span>, aynı masada <span>yeni başlangıçlar.</span>
         </p>
         <div class="intro-strip__stats" aria-label="Arşivdeki kayıtlar">
           <div>
@@ -96,10 +107,98 @@
         </div>
       </section>
 
+      <section class="community-section" id="topluluk" aria-labelledby="community-heading">
+        <div class="community-shell">
+          <div class="section-heading community-heading">
+            <div>
+              <p class="eyebrow"><span class="section-number">01</span> KAMPÜSTEN SESLER</p>
+              <h2 id="community-heading">Bir fikrin varsa,<br /><span>yeri burada.</span></h2>
+            </div>
+            <p class="section-heading__aside">
+              Derslerden kulüplere, kampüste konuşmak ve birlikte üretmek için.
+            </p>
+          </div>
+
+          <aside class="community-preview-note" id="community-account-note" aria-label="Topluluk hesap bilgisi">
+            <span aria-hidden="true">i</span>
+            <p id="community-account-message"></p>
+          </aside>
+
+          <div class="community-layout">
+            <div class="community-main">
+              <form class="compose-card" id="post-form">
+                <div class="compose-card__top">
+                  <span class="avatar avatar--you" aria-hidden="true">S</span>
+                  <label class="sr-only" for="post-content">Kampüsle paylaş</label>
+                  <textarea
+                    id="post-content"
+                    name="content"
+                    maxlength="500"
+                    rows="2"
+                    placeholder="Aklında ne var? Bir fikir, soru ya da keşif…"
+                    required
+                  ></textarea>
+                </div>
+                <div class="compose-card__bottom">
+                  <label class="compose-category">
+                    <span class="sr-only">Paylaşım konusu</span>
+                    <select id="post-category" name="category">
+                      <option value="Fikir">💡 Fikir</option>
+                      <option value="Ders">📚 Ders</option>
+                      <option value="Kampüs">🌿 Kampüs</option>
+                    </select>
+                  </label>
+                  <div class="compose-card__actions">
+                    <span id="post-counter" class="character-count">0 / 500</span>
+                    <button class="button button--primary compose-submit" type="submit">
+                      Paylaş <span aria-hidden="true">↗</span>
+                    </button>
+                  </div>
+                </div>
+              </form>
+
+              <div class="feed-toolbar">
+                <div>
+                  <p class="eyebrow">TOPLULUK AKIŞI</p>
+                  <h3>Kampüsten <span>son paylaşımlar</span></h3>
+                </div>
+                <div class="feed-filters" role="group" aria-label="Paylaşım filtresi">
+                  <button class="feed-filter is-active" type="button" data-feed-filter="Tümü" aria-pressed="true">Tümü</button>
+                  <button class="feed-filter" type="button" data-feed-filter="Fikir" aria-pressed="false">Fikirler</button>
+                  <button class="feed-filter" type="button" data-feed-filter="Ders" aria-pressed="false">Dersler</button>
+                  <button class="feed-filter" type="button" data-feed-filter="Kampüs" aria-pressed="false">Kampüs</button>
+                </div>
+              </div>
+              <p class="community-status" id="community-status" role="status" aria-live="polite"></p>
+              <div class="community-feed" id="community-feed"></div>
+              <p class="feed-empty" id="feed-empty" hidden>
+                Bu başlıkta henüz paylaşım yok. İlk fikri sen başlat.
+              </p>
+            </div>
+
+            <aside class="community-aside" aria-label="Öğrenci toplulukları">
+              <div class="community-aside__intro">
+                <p class="eyebrow">BİRLİKTE DAHA GÜZEL</p>
+                <h3>Kendi çevreni <span>bul.</span></h3>
+                <p>Ortak ilgi alanlarında buluş, bir çalışma grubu başlat.</p>
+              </div>
+              <button class="button button--outline group-create-button" id="create-group-button" type="button">
+                <span aria-hidden="true">＋</span> Topluluk oluştur
+              </button>
+              <div class="group-list" id="group-list"></div>
+              <div class="community-aside__footer">
+                <span aria-hidden="true">✳</span>
+                <p>İyi fikirler, birlikte konuşunca büyür.</p>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+
       <section class="section staff-section" id="akademisyenler" aria-labelledby="staff-heading">
         <div class="section-heading">
           <div>
-            <p class="eyebrow"><span class="section-number">01</span> BİRLİKTE ÜRETENLER</p>
+            <p class="eyebrow"><span class="section-number">02</span> BİRLİKTE ÜRETENLER</p>
             <h2 id="staff-heading">Akademik <span>kadromuz.</span></h2>
           </div>
           <p class="section-heading__aside">
@@ -159,7 +258,7 @@
           <div class="section-heading section-heading--light">
             <div>
               <p class="eyebrow eyebrow--light">
-                <span class="section-number">02</span> ÖĞRENME ROTASI
+                <span class="section-number">03</span> ÖĞRENME ROTASI
               </p>
               <h2 id="courses-heading">Ders <span>arşivi.</span></h2>
             </div>
@@ -227,7 +326,7 @@
 
       <section class="section about-section" id="bolum" aria-labelledby="about-heading">
         <div class="about-section__label">
-          <p class="eyebrow"><span class="section-number">03</span> BÖLÜM HAKKINDA</p>
+          <p class="eyebrow"><span class="section-number">04</span> BÖLÜM HAKKINDA</p>
           <span class="about-section__coordinates">KIRŞEHİR · 39°08′ N</span>
         </div>
         <div class="about-section__body">
@@ -279,6 +378,92 @@
         target="_blank"
         rel="noreferrer"
       >Resmî Bologna kataloğunu aç <span aria-hidden="true">↗</span></a>
+    </dialog>
+
+    <dialog class="account-dialog" id="account-dialog" aria-labelledby="account-dialog-title">
+      <form id="account-form" class="account-dialog__content">
+        <button class="course-dialog__close" id="account-dialog-close" type="button" aria-label="Pencereyi kapat">×</button>
+        <p class="eyebrow">KAMPÜS TOPLULUĞU</p>
+        <h2 id="account-dialog-title">Tekrar hoş geldin.</h2>
+        <p id="account-mode-description">E-posta adresinle giriş yap.</p>
+        <div class="auth-mode-switch" role="group" aria-label="Giriş veya kayıt seç">
+          <button type="button" class="auth-mode is-active" data-auth-mode="login" aria-pressed="true">Giriş yap</button>
+          <button type="button" class="auth-mode" data-auth-mode="register" aria-pressed="false">Hesap oluştur</button>
+        </div>
+        <label for="auth-email">E-posta</label>
+        <input id="auth-email" name="email" type="email" required maxlength="254" autocomplete="email" placeholder="ornek@posta.com" />
+        <label for="auth-password">Şifre</label>
+        <input id="auth-password" name="password" type="password" required minlength="8" autocomplete="current-password" />
+        <button class="auth-forgot-button" id="auth-forgot-button" type="button">Şifremi unuttum</button>
+        <div class="auth-register-fields" id="auth-register-fields" hidden>
+          <label for="auth-display-name">Adın</label>
+          <input id="auth-display-name" name="displayName" type="text" minlength="2" maxlength="60" autocomplete="name" />
+          <label for="auth-department">Bölümün</label>
+          <input id="auth-department" name="department" type="text" minlength="2" maxlength="100" autocomplete="organization-title" placeholder="Örn. Makine Mühendisliği" />
+        </div>
+        <div id="auth-password-confirm-field" hidden>
+          <label for="auth-password-confirm">Şifreyi tekrar yaz</label>
+          <input id="auth-password-confirm" name="passwordConfirm" type="password" minlength="8" autocomplete="new-password" />
+        </div>
+        <p class="auth-privacy-note">E-posta/şifre hesabı oluşturulur ve e-posta doğrulaması istenir. Bu kayıt, üniversitede aktif öğrenci olduğunu doğrulamaz.</p>
+        <p id="auth-status" class="community-status" role="status" aria-live="polite"></p>
+        <button class="button button--primary auth-submit" id="auth-submit" type="submit">Giriş yap</button>
+      </form>
+    </dialog>
+
+    <dialog class="account-dialog" id="profile-dialog" aria-labelledby="profile-dialog-title">
+      <form id="profile-form" class="account-dialog__content">
+        <div class="course-dialog__header">
+          <p class="course-dialog__eyebrow">HESABIN</p>
+          <button class="course-dialog__close" id="profile-dialog-close" type="button" aria-label="Pencereyi kapat">×</button>
+        </div>
+        <h2 id="profile-dialog-title">Profilini düzenle.</h2>
+        <div class="profile-avatar-preview" id="profile-avatar-preview" aria-hidden="true">?</div>
+        <label for="profile-display-name">Görünen ad</label>
+        <input id="profile-display-name" name="displayName" type="text" required minlength="2" maxlength="60" autocomplete="name" />
+        <label for="profile-department">Bölüm</label>
+        <input id="profile-department" name="department" type="text" required minlength="2" maxlength="100" />
+        <label for="profile-avatar">Profil fotoğrafı <span>(JPG, PNG veya WebP · en fazla 5 MB)</span></label>
+        <input id="profile-avatar" name="avatar" type="file" accept="image/jpeg,image/png,image/webp" />
+        <p id="profile-status" class="community-status" role="status" aria-live="polite"></p>
+        <button class="button button--primary" id="profile-save-button" type="submit">Profili kaydet</button>
+      </form>
+    </dialog>
+
+    <dialog class="group-dialog" id="group-dialog" aria-labelledby="group-dialog-title">
+      <form id="group-form" class="group-dialog__content">
+        <div class="course-dialog__header">
+          <p class="course-dialog__eyebrow">YENİ TOPLULUK</p>
+          <button class="course-dialog__close" id="group-dialog-close" type="button" aria-label="Pencereyi kapat">×</button>
+        </div>
+        <h2 id="group-dialog-title">Bir araya gelin.</h2>
+        <p>İlgi alanını yaz; topluluğun bu önizlemede listelensin.</p>
+        <label for="group-name">Topluluk adı</label>
+        <input id="group-name" name="name" maxlength="48" autocomplete="off" required placeholder="Örn. Tasarım ve üretim" />
+        <label for="group-description">Kısa açıklama <span>(isteğe bağlı)</span></label>
+        <textarea id="group-description" name="description" rows="3" maxlength="140" placeholder="Bu topluluğu özel yapan ne?"></textarea>
+        <p id="group-form-status" class="community-status" role="status" aria-live="polite"></p>
+        <button class="button button--primary" type="submit">Topluluğu oluştur</button>
+      </form>
+    </dialog>
+
+    <dialog class="group-chat-dialog" id="group-chat-dialog" aria-labelledby="group-chat-title">
+      <div class="group-chat">
+        <div class="course-dialog__header">
+          <div>
+            <p class="course-dialog__eyebrow">TOPLULUK SOHBETİ</p>
+            <h2 id="group-chat-title"></h2>
+          </div>
+          <button class="course-dialog__close" id="group-chat-close" type="button" aria-label="Sohbeti kapat">×</button>
+        </div>
+        <p id="group-chat-status" class="community-status" role="status" aria-live="polite"></p>
+        <div class="group-chat__messages" id="group-chat-messages" aria-live="polite"></div>
+        <form class="group-chat__form" id="group-chat-form">
+          <label class="sr-only" for="group-chat-input">Mesaj yaz</label>
+          <textarea id="group-chat-input" maxlength="2000" rows="2" required placeholder="Mesajını yaz…"></textarea>
+          <button class="button button--primary" type="submit">Gönder</button>
+        </form>
+      </div>
     </dialog>
 
     <footer class="site-footer">
