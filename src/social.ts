@@ -4,6 +4,7 @@ import {
   createGroup,
   createPost,
   deleteMessage,
+  deleteGroup,
   deletePost,
   deletePostComment,
   joinGroup,
@@ -537,6 +538,40 @@ export function initializeSocialCommunity(): void {
       await openGroupChat(group);
     });
     actions.append(action);
+    if (group.owner_id === user?.id) {
+      const deleteButton = element("button", "group-action group-action--delete");
+      deleteButton.type = "button";
+      deleteButton.textContent = "Sil";
+      deleteButton.setAttribute("aria-label", `${group.name} topluluğunu sil`);
+      deleteButton.addEventListener("click", async () => {
+        if (
+          !user ||
+          !window.confirm(
+            "Bu topluluk silinirse üyelikler ve sohbet mesajları da silinir; paylaşımlar genel akışta kalır. Devam edilsin mi?",
+          )
+        ) {
+          return;
+        }
+        deleteButton.disabled = true;
+        setStatus("");
+        try {
+          await deleteGroup({ groupId: group.id, ownerId: user.id });
+          try {
+            await refreshGroups();
+            setStatus("Topluluk silindi.");
+          } catch (error) {
+            setStatus(
+              `Topluluk silindi, ancak liste yenilenemedi: ${describeError(error)}`,
+            );
+          }
+        } catch (error) {
+          setStatus(describeError(error));
+        } finally {
+          deleteButton.disabled = false;
+        }
+      });
+      actions.append(deleteButton);
+    }
     card.append(mark, copy, actions);
     return card;
   }

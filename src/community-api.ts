@@ -397,6 +397,23 @@ export async function createGroup(input: {
   throwIfError(error);
 }
 
+export async function deleteGroup(input: {
+  groupId: string;
+  ownerId: string;
+}): Promise<void> {
+  const { data, error } = await client()
+    .from("groups")
+    .delete()
+    .eq("id", input.groupId)
+    .eq("owner_id", input.ownerId)
+    .select("id")
+    .maybeSingle();
+  throwIfError(error);
+  if (!data) {
+    throw new Error("Topluluk silinemedi. Yalnızca oluşturan kişi silebilir.");
+  }
+}
+
 export async function joinGroup(input: {
   userId: string;
   groupId: string;

@@ -1788,6 +1788,16 @@ select:focus-visible {
   background: #315343;
 }
 
+.group-action--delete {
+  border-color: #ebd6d2;
+  color: #a64e46;
+  background: #fbf3f1;
+}
+
+.group-action--delete:hover {
+  background: #f7e9e6;
+}
+
 .group-chat-dialog {
   width: min(620px, calc(100vw - 1.5rem));
   height: min(680px, calc(100dvh - 2rem));
