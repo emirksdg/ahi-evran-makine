@@ -1,12 +1,63 @@
 export interface Database {
   public: {
     Tables: {
+      universities: {
+        Row: {
+          id: string;
+          name: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          created_at?: string;
+        };
+        Update: {
+          name?: string;
+        };
+        Relationships: [];
+      };
+      university_email_domains: {
+        Row: {
+          id: string;
+          university_id: string;
+          email_domain: string;
+          evidence_url: string;
+          verified_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          university_id: string;
+          email_domain: string;
+          evidence_url: string;
+          verified_at: string;
+          created_at?: string;
+        };
+        Update: {
+          university_id?: string;
+          email_domain?: string;
+          evidence_url?: string;
+          verified_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "university_email_domains_university_id_fkey";
+            columns: ["university_id"];
+            isOneToOne: false;
+            referencedRelation: "universities";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       profiles: {
         Row: {
           id: string;
           display_name: string;
           department: string;
           avatar_path: string | null;
+          university_id: string | null;
+          institution_verified_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -15,6 +66,8 @@ export interface Database {
           display_name: string;
           department: string;
           avatar_path?: string | null;
+          university_id?: string | null;
+          institution_verified_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -24,7 +77,15 @@ export interface Database {
           avatar_path?: string | null;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "profiles_university_id_fkey";
+            columns: ["university_id"];
+            isOneToOne: false;
+            referencedRelation: "universities";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       posts: {
         Row: {
@@ -33,6 +94,7 @@ export interface Database {
           content: string;
           category: "Fikir" | "Ders" | "Kampüs";
           like_count: number;
+          group_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -41,13 +103,55 @@ export interface Database {
           content: string;
           category: "Fikir" | "Ders" | "Kampüs";
           like_count?: number;
+          group_id?: string | null;
           created_at?: string;
         };
         Update: {
           content?: string;
           category?: "Fikir" | "Ders" | "Kampüs";
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "posts_group_id_fkey";
+            columns: ["group_id"];
+            isOneToOne: false;
+            referencedRelation: "groups";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      post_comments: {
+        Row: {
+          id: string;
+          post_id: string;
+          author_id: string;
+          content: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          post_id: string;
+          author_id: string;
+          content: string;
+          created_at?: string;
+        };
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: "post_comments_post_id_fkey";
+            columns: ["post_id"];
+            isOneToOne: false;
+            referencedRelation: "posts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "post_comments_author_id_fkey";
+            columns: ["author_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       post_likes: {
         Row: { post_id: string; user_id: string; created_at: string };
@@ -61,6 +165,9 @@ export interface Database {
           owner_id: string;
           name: string;
           description: string;
+          scope: "global" | "university";
+          university_id: string | null;
+          department: string | null;
           created_at: string;
         };
         Insert: {
@@ -68,13 +175,25 @@ export interface Database {
           owner_id: string;
           name: string;
           description?: string;
+          scope?: "global" | "university";
+          university_id?: string | null;
+          department?: string | null;
           created_at?: string;
         };
         Update: {
           name?: string;
           description?: string;
+          department?: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "groups_university_id_fkey";
+            columns: ["university_id"];
+            isOneToOne: false;
+            referencedRelation: "universities";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       group_members: {
         Row: { group_id: string; user_id: string; joined_at: string };

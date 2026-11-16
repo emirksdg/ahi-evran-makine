@@ -44,6 +44,15 @@ describe("filterStaff", () => {
     ).toEqual([staff[2]]);
   });
 
+  it("matches department values case-insensitively and ignores whitespace", () => {
+    expect(
+      filterStaff(staff, {
+        department: "  makine teorisi ve sistem dinamiği  ",
+        query: "",
+      }),
+    ).toEqual([staff[1]]);
+  });
+
   it("returns no entries when no query matches", () => {
     expect(filterStaff(staff, { query: "bulunmayan kişi" })).toEqual([]);
   });

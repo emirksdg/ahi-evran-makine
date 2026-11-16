@@ -3,6 +3,7 @@ import {
   parseGroups,
   parsePosts,
   validateGroup,
+  validateCommentContent,
   validatePostContent,
 } from "../src/community";
 
@@ -17,6 +18,20 @@ describe("validatePostContent", () => {
   it("rejects empty or oversized posts", () => {
     expect(validatePostContent("  ").valid).toBe(false);
     expect(validatePostContent("x".repeat(501)).valid).toBe(false);
+  });
+});
+
+describe("validateCommentContent", () => {
+  it("trims a comment before accepting it", () => {
+    expect(validateCommentContent("  Güzel fikir!  ")).toEqual({
+      valid: true,
+      value: "Güzel fikir!",
+    });
+  });
+
+  it("rejects blank or oversized comments", () => {
+    expect(validateCommentContent("  ").valid).toBe(false);
+    expect(validateCommentContent("x".repeat(2001)).valid).toBe(false);
   });
 });
 

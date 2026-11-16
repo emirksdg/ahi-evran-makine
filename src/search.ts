@@ -3,7 +3,8 @@ import type { Course, StaffFilters, StaffMember } from "./types";
 function normalize(value: string): string {
   return value
     .trim()
-    .normalize("NFC")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLocaleLowerCase("tr-TR")
     .replaceAll("ı", "i");
 }
@@ -13,11 +14,11 @@ export function filterStaff(
   filters: StaffFilters,
 ): StaffMember[] {
   const query = normalize(filters.query);
-  const department = filters.department ?? "";
+  const department = normalize(filters.department ?? "");
 
   return staff.filter((person) => {
     const matchesDepartment =
-      department === "" || person.department === department;
+      department === "" || normalize(person.department) === department;
     const searchableText = normalize(
       `${person.name} ${person.title} ${person.department}`,
     );

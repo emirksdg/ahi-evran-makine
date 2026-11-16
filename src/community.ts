@@ -17,6 +17,7 @@ export interface StudentGroup {
 }
 
 export const maxPostLength = 500;
+export const maxCommentLength = 2000;
 export const maxGroupNameLength = 48;
 export const maxGroupDescriptionLength = 140;
 
@@ -35,6 +36,22 @@ export function validatePostContent(
     return {
       valid: false,
       reason: `Paylaşım en fazla ${maxPostLength} karakter olabilir.`,
+    };
+  }
+  return { valid: true, value: content };
+}
+
+export function validateCommentContent(
+  value: string,
+): { valid: true; value: string } | { valid: false; reason: string } {
+  const content = value.trim();
+  if (!content) {
+    return { valid: false, reason: "Yorum metni boş olamaz." };
+  }
+  if (content.length > maxCommentLength) {
+    return {
+      valid: false,
+      reason: `Yorum en fazla ${maxCommentLength} karakter olabilir.`,
     };
   }
   return { valid: true, value: content };

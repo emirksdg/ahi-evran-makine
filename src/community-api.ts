@@ -4,8 +4,15 @@ import type { Database } from "./database.types";
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 type PostRow = Database["public"]["Tables"]["posts"]["Row"];
+type PostCommentRow = Database["public"]["Tables"]["post_comments"]["Row"];
 type GroupRow = Database["public"]["Tables"]["groups"]["Row"];
 type MessageRow = Database["public"]["Tables"]["messages"]["Row"];
+
+export interface PostComment extends PostCommentRow {
+  author: Pick<ProfileRow, "id" | "display_name" | "department"> & {
+    avatar_url: string | null;
+  };
+}
 
 export interface StudentProfile extends ProfileRow {
   avatar_url: string | null;
@@ -242,6 +249,62 @@ export async function createPost(input: {
     author_id: input.userId,
     content: input.content,
     category: input.category,
+  });
+  throwIfError(error);
+}
+
+export async function loadPostComments(postId: string): Promise<PostComment[]> {
+  const db = client();
+  const { data: comments, error } = await db
+    .from("post_comments")
+    .select("*")
+    .eq("post_id", postId)
+    .order("created_at", { ascending: true })
+    .limit(100);
+  if (error) throw new Error(error.message);
+  if (comments.length === 0) return [];
+
+  const authorIds = [...new Set(comments.map((comment) => comment.author_id))];
+  const { data: profiles, error: profileError } = await db
+    .from("profiles")
+    .select("*")
+    .in("id", authorIds);
+  if (profileError) throw new Error(profileError.message);
+
+  const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
+  const avatarUrls = new Map<string, string | null>();
+  await Promise.all(
+    profiles.map(async (profile) => {
+      avatarUrls.set(profile.id, await signedAvatarUrl(profile.avatar_path));
+    }),
+  );
+
+  return comments.flatMap((comment) => {
+    const author = profileById.get(comment.author_id);
+    if (!author) return [];
+    return [
+      {
+        ...comment,
+        author: {
+          id: author.id,
+          display_name: author.display_name,
+          department: author.department,
+          avatar_url: avatarUrls.get(author.id) ?? null,
+        },
+      },
+    ];
+  });
+}
+
+export async function createPostComment(input: {
+  postId: string;
+  authorId: string;
+  content: string;
+}): Promise<void> {
+  const { error } = await client().from("post_comments").insert({
+    post_id: input.postId,
+    author_id: input.authorId,
+    content: input.content,
   });
   throwIfError(error);
 }

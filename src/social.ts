@@ -1,11 +1,13 @@
 import type { User } from "@supabase/supabase-js";
 import {
+  createPostComment,
   createGroup,
   createPost,
   joinGroup,
   loadGroups,
   loadMessages,
   loadPosts,
+  loadPostComments,
   loadProfile,
   registerWithEmail,
   sendMessage,
@@ -19,11 +21,13 @@ import {
   watchGroupMessages,
   type FeedPost,
   type GroupMessage,
+  type PostComment,
   type StudentGroup,
   type StudentProfile,
 } from "./community-api";
 import {
   isPostCategory,
+  validateCommentContent,
   validateGroup,
   validatePostContent,
 } from "./community";
@@ -141,6 +145,7 @@ export function initializeSocialCommunity(): void {
   const groupChatInput =
     requiredElement<HTMLTextAreaElement>("#group-chat-input");
   const authMode = { value: "login" as "login" | "register" | "reset" };
+  let authSuccessTimeout: number | null = null;
 
   let user: User | null = null;
   let profile: StudentProfile | null = null;
@@ -157,6 +162,10 @@ export function initializeSocialCommunity(): void {
   };
 
   function setAuthMode(mode: "login" | "register" | "reset"): void {
+    if (authSuccessTimeout !== null) {
+      window.clearTimeout(authSuccessTimeout);
+      authSuccessTimeout = null;
+    }
     authMode.value = mode;
     const registering = mode === "register";
     const resetting = mode === "reset";
@@ -185,6 +194,7 @@ export function initializeSocialCommunity(): void {
     requiredElement<HTMLButtonElement>("#auth-forgot-button").hidden =
       registering || resetting;
     accountStatus.textContent = "";
+    accountStatus.classList.remove("auth-status--success");
     document
       .querySelectorAll<HTMLButtonElement>("[data-auth-mode]")
       .forEach((button) => {
@@ -213,6 +223,24 @@ export function initializeSocialCommunity(): void {
       return;
     }
     target.textContent = name.trim().slice(0, 1).toLocaleUpperCase("tr-TR") || "?";
+  }
+
+  function createPostCommentCard(comment: PostComment): HTMLElement {
+    const card = element("article", "post-comment");
+    const header = element("div", "post-comment__header");
+    const name = element("p", "post-comment__name");
+    name.textContent = comment.author.display_name;
+    const date = element("time", "post-comment__date");
+    date.dateTime = comment.created_at;
+    date.textContent = new Intl.DateTimeFormat("tr-TR", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(comment.created_at));
+    header.append(name, date);
+    const content = element("p", "post-comment__content");
+    content.textContent = comment.content;
+    card.append(header, content);
+    return card;
   }
 
   function createPostCard(post: FeedPost): HTMLElement {
@@ -279,8 +307,98 @@ export function initializeSocialCommunity(): void {
         like.disabled = false;
       }
     });
-    footer.append(like);
-    card.append(header, body, footer);
+
+    const commentsToggle = element("button", "post-comments__toggle");
+    commentsToggle.type = "button";
+    commentsToggle.textContent = "Yorumları gör";
+    commentsToggle.setAttribute("aria-expanded", "false");
+
+    const commentsPanel = element("section", "post-comments__panel");
+    commentsPanel.id = `post-comments-${post.id}`;
+    commentsPanel.setAttribute("aria-label", "Yorumlar");
+    commentsPanel.hidden = true;
+    commentsToggle.setAttribute("aria-controls", commentsPanel.id);
+
+    const commentsList = element("div", "post-comments__list");
+    const commentsEmpty = element("p", "post-comments__empty");
+    commentsEmpty.textContent = "Henüz yorum yok. İlk yorumu sen yaz.";
+    const commentStatus = element("p", "post-comments__status");
+    commentStatus.setAttribute("role", "status");
+    commentStatus.setAttribute("aria-live", "polite");
+
+    const commentForm = element("form", "post-comments__form");
+    const commentInput = element("textarea", "post-comments__input");
+    commentInput.maxLength = 2000;
+    commentInput.rows = 2;
+    commentInput.required = true;
+    commentInput.setAttribute("aria-label", "Yorum metni");
+    commentInput.placeholder = "Bu fikre yorum yaz…";
+    const commentSubmit = element("button", "button button--primary");
+    commentSubmit.type = "submit";
+    commentSubmit.textContent = "Yorum gönder";
+    commentForm.append(commentInput, commentSubmit);
+    commentsPanel.append(commentsList, commentsEmpty, commentStatus, commentForm);
+
+    let commentsLoaded = false;
+    async function refreshPostComments(): Promise<void> {
+      const comments = await loadPostComments(post.id);
+      commentsList.replaceChildren(...comments.map(createPostCommentCard));
+      commentsEmpty.hidden = comments.length > 0;
+      commentsToggle.textContent =
+        comments.length > 0 ? `Yorumlar (${comments.length})` : "Yorum yap";
+      commentsLoaded = true;
+    }
+
+    commentsToggle.addEventListener("click", async () => {
+      const expanded = commentsPanel.hidden;
+      commentsPanel.hidden = !expanded;
+      commentsToggle.setAttribute("aria-expanded", String(expanded));
+      if (!expanded || commentsLoaded) return;
+      commentStatus.textContent = "Yorumlar yükleniyor…";
+      try {
+        await refreshPostComments();
+        commentStatus.textContent = "";
+      } catch (error) {
+        commentStatus.textContent = describeError(error);
+      }
+    });
+
+    commentForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!user) {
+        openAuth();
+        return;
+      }
+      const result = validateCommentContent(commentInput.value);
+      if (!result.valid) {
+        commentStatus.textContent = result.reason;
+        return;
+      }
+      commentSubmit.disabled = true;
+      commentStatus.textContent = "";
+      try {
+        await createPostComment({
+          postId: post.id,
+          authorId: user.id,
+          content: result.value,
+        });
+        commentInput.value = "";
+        commentsLoaded = false;
+        commentStatus.textContent = "Yorumun eklendi.";
+        try {
+          await refreshPostComments();
+        } catch (error) {
+          commentStatus.textContent = `Yorumun eklendi, ancak liste yenilenemedi: ${describeError(error)}`;
+        }
+      } catch (error) {
+        commentStatus.textContent = describeError(error);
+      } finally {
+        commentSubmit.disabled = false;
+      }
+    });
+
+    footer.append(like, commentsToggle);
+    card.append(header, body, footer, commentsPanel);
     return card;
   }
 
@@ -429,6 +547,7 @@ export function initializeSocialCommunity(): void {
     signedInControls.hidden = !nextUser;
     loginButton.hidden = Boolean(nextUser);
     postForm.hidden = !nextUser;
+    requiredElement<HTMLButtonElement>("#create-group-button").hidden = !nextUser;
     requiredElement<HTMLButtonElement>("#create-group-button").disabled =
       !nextUser;
 
@@ -501,10 +620,20 @@ export function initializeSocialCommunity(): void {
           department: authDepartment.value,
         });
         if (!result.session) {
-          accountStatus.textContent =
-            "Hesabın oluşturuldu. Giriş yapmadan önce e-postana gönderilen doğrulama bağlantısını aç.";
           accountForm.reset();
           setAuthMode("login");
+          accountStatus.classList.add("auth-status--success");
+          const successTitle = element("strong");
+          successTitle.textContent = "Hesabın oluşturuldu!";
+          const successMessage = element("span");
+          successMessage.textContent =
+            "Doğrulama e-postasını gönderdik. Gelen kutunu ve spam klasörünü kontrol et.";
+          accountStatus.replaceChildren(successTitle, successMessage);
+          authSuccessTimeout = window.setTimeout(() => {
+            accountStatus.replaceChildren();
+            accountStatus.classList.remove("auth-status--success");
+            authSuccessTimeout = null;
+          }, 8000);
           return;
         }
         accountDialog.close();
