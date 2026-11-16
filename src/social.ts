@@ -3,6 +3,9 @@ import {
   createPostComment,
   createGroup,
   createPost,
+  deleteMessage,
+  deletePost,
+  deletePostComment,
   joinGroup,
   loadGroups,
   loadMessages,
@@ -105,6 +108,10 @@ export function initializeSocialCommunity(): void {
   const profileDepartment = requiredElement<HTMLInputElement>(
     "#profile-department",
   );
+  const profileUniversity = requiredElement<HTMLInputElement>(
+    "#profile-university",
+  );
+  const profileBio = requiredElement<HTMLTextAreaElement>("#profile-bio");
   const profileAvatar = requiredElement<HTMLInputElement>("#profile-avatar");
   const profileAvatarPreview =
     requiredElement<HTMLElement>("#profile-avatar-preview");
@@ -160,6 +167,14 @@ export function initializeSocialCommunity(): void {
   const setStatus = (message: string) => {
     communityStatus.textContent = message;
   };
+
+  function createDeleteButton(label: string): HTMLButtonElement {
+    const button = element("button", "content-delete-button");
+    button.type = "button";
+    button.textContent = "Sil";
+    button.setAttribute("aria-label", label);
+    return button;
+  }
 
   function setAuthMode(mode: "login" | "register" | "reset"): void {
     if (authSuccessTimeout !== null) {
@@ -225,7 +240,11 @@ export function initializeSocialCommunity(): void {
     target.textContent = name.trim().slice(0, 1).toLocaleUpperCase("tr-TR") || "?";
   }
 
-  function createPostCommentCard(comment: PostComment): HTMLElement {
+  function createPostCommentCard(
+    comment: PostComment,
+    status: HTMLElement,
+    onDeleted: () => Promise<void>,
+  ): HTMLElement {
     const card = element("article", "post-comment");
     const header = element("div", "post-comment__header");
     const name = element("p", "post-comment__name");
@@ -240,6 +259,36 @@ export function initializeSocialCommunity(): void {
     const content = element("p", "post-comment__content");
     content.textContent = comment.content;
     card.append(header, content);
+    if (user?.id === comment.author.id) {
+      const deleteButton = createDeleteButton("Yorumu sil");
+      deleteButton.addEventListener("click", async () => {
+        if (
+          !user ||
+          !window.confirm("Yorumunu silmek istediğine emin misin?")
+        ) {
+          return;
+        }
+        deleteButton.disabled = true;
+        status.textContent = "";
+        try {
+          await deletePostComment({
+            commentId: comment.id,
+            authorId: user.id,
+          });
+          try {
+            await onDeleted();
+            status.textContent = "Yorum silindi.";
+          } catch (error) {
+            status.textContent = `Yorum silindi, ancak liste yenilenemedi: ${describeError(error)}`;
+          }
+        } catch (error) {
+          status.textContent = describeError(error);
+        } finally {
+          deleteButton.disabled = false;
+        }
+      });
+      card.append(deleteButton);
+    }
     return card;
   }
 
@@ -342,7 +391,11 @@ export function initializeSocialCommunity(): void {
     let commentsLoaded = false;
     async function refreshPostComments(): Promise<void> {
       const comments = await loadPostComments(post.id);
-      commentsList.replaceChildren(...comments.map(createPostCommentCard));
+      commentsList.replaceChildren(
+        ...comments.map((comment) =>
+          createPostCommentCard(comment, commentStatus, refreshPostComments),
+        ),
+      );
       commentsEmpty.hidden = comments.length > 0;
       commentsToggle.textContent =
         comments.length > 0 ? `Yorumlar (${comments.length})` : "Yorum yap";
@@ -398,6 +451,27 @@ export function initializeSocialCommunity(): void {
     });
 
     footer.append(like, commentsToggle);
+    if (user?.id === post.author.id) {
+      const deleteButton = createDeleteButton("Fikri sil");
+      deleteButton.addEventListener("click", async () => {
+        if (!user || !window.confirm("Fikrini silmek istediğine emin misin?")) {
+          return;
+        }
+        deleteButton.disabled = true;
+        setStatus("");
+        try {
+          await deletePost({ postId: post.id, userId: user.id });
+          posts = posts.filter((item) => item.id !== post.id);
+          renderPosts();
+          setStatus("Fikrin silindi.");
+        } catch (error) {
+          setStatus(describeError(error));
+        } finally {
+          deleteButton.disabled = false;
+        }
+      });
+      footer.append(deleteButton);
+    }
     card.append(header, body, footer, commentsPanel);
     return card;
   }
@@ -481,11 +555,10 @@ export function initializeSocialCommunity(): void {
   }
 
   function createMessageCard(message: GroupMessage): HTMLElement {
+    const ownMessage = message.author.id === user?.id;
     const card = element(
       "article",
-      message.author.id === user?.id
-        ? "chat-message chat-message--own"
-        : "chat-message",
+      ownMessage ? "chat-message chat-message--own" : "chat-message",
     );
     const meta = element("p", "chat-message__meta");
     meta.textContent = `${message.author.display_name} · ${new Intl.DateTimeFormat(
@@ -495,6 +568,35 @@ export function initializeSocialCommunity(): void {
     const content = element("p", "chat-message__content");
     content.textContent = message.content;
     card.append(meta, content);
+    if (ownMessage) {
+      const deleteButton = createDeleteButton("Sohbet mesajını sil");
+      deleteButton.addEventListener("click", async () => {
+        const groupId = activeChatGroup?.id;
+        if (
+          !user ||
+          !groupId ||
+          !window.confirm("Sohbet mesajını silmek istediğine emin misin?")
+        ) {
+          return;
+        }
+        deleteButton.disabled = true;
+        groupChatStatus.textContent = "";
+        try {
+          await deleteMessage({
+            messageId: message.id,
+            userId: user.id,
+            groupId,
+          });
+          await refreshMessages(groupId);
+          groupChatStatus.textContent = "Mesaj silindi.";
+        } catch (error) {
+          groupChatStatus.textContent = describeError(error);
+        } finally {
+          deleteButton.disabled = false;
+        }
+      });
+      card.append(deleteButton);
+    }
     return card;
   }
 
@@ -693,6 +795,8 @@ export function initializeSocialCommunity(): void {
       profileStatus.textContent = "";
       profileName.value = profile.display_name;
       profileDepartment.value = profile.department;
+      profileUniversity.value = profile.university_name ?? "";
+      profileBio.value = profile.bio ?? "";
       profileAvatar.value = "";
       updateAvatarPreview(
         profileAvatarPreview,
@@ -732,6 +836,14 @@ export function initializeSocialCommunity(): void {
       profileStatus.textContent = "Bölüm bilgisi en az 2 karakter olmalı.";
       return;
     }
+    if (
+      profileUniversity.value.trim() &&
+      profileUniversity.value.trim().length < 2
+    ) {
+      profileStatus.textContent =
+        "Üniversite adı en az 2 karakter olmalı veya boş bırakılmalı.";
+      return;
+    }
     profileSaveButton.disabled = true;
     profileStatus.textContent = "Profil kaydediliyor…";
     try {
@@ -739,6 +851,8 @@ export function initializeSocialCommunity(): void {
         userId: user.id,
         displayName: profileName.value,
         department: profileDepartment.value,
+        bio: profileBio.value,
+        universityName: profileUniversity.value,
         avatarFile: profileAvatar.files?.[0],
         previousAvatarPath: profile.avatar_path,
       });

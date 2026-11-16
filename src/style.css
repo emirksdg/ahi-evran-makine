@@ -1628,7 +1628,8 @@ select:focus-visible {
 }
 
 .account-dialog__content > label,
-.account-dialog__content > input:not([type="checkbox"]) {
+.account-dialog__content > input:not([type="checkbox"]),
+.account-dialog__content > textarea {
   display: block;
   width: 100%;
 }
@@ -1646,6 +1647,7 @@ select:focus-visible {
 }
 
 .account-dialog__content > input,
+.account-dialog__content > textarea,
 .auth-register-fields > input {
   min-height: 43px;
   padding: 0.72rem 0.85rem;
@@ -1659,10 +1661,17 @@ select:focus-visible {
 }
 
 .account-dialog__content > input:focus,
+.account-dialog__content > textarea:focus,
 .auth-register-fields > input:focus {
   border-color: #6b9b7c;
   outline: 0;
   box-shadow: 0 0 0 3px rgb(72 130 91 / 14%);
+}
+
+.account-dialog__content > textarea {
+  min-height: 100px;
+  resize: vertical;
+  line-height: 1.5;
 }
 
 .auth-register-fields > label {
@@ -1849,6 +1858,33 @@ select:focus-visible {
   line-height: 1.55;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+}
+
+.content-delete-button {
+  display: block;
+  margin: 0.25rem 0 0 auto;
+  padding: 0.2rem 0.35rem;
+  border: 0;
+  border-radius: 5px;
+  color: #a64e46;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+.content-delete-button:hover {
+  color: #823a34;
+  background: #f7e9e6;
+}
+
+.content-delete-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.feed-card__footer .content-delete-button {
+  margin: 0 0 0 auto;
 }
 
 .group-chat__form {
@@ -2300,6 +2336,10 @@ select:focus-visible {
   line-height: 1.6;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+}
+
+.post-comment > .content-delete-button {
+  margin-top: 0.1rem;
 }
 
 .post-comments__empty {

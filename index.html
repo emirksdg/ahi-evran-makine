@@ -293,6 +293,10 @@
         <input id="profile-display-name" name="displayName" type="text" required minlength="2" maxlength="60" autocomplete="name" />
         <label for="profile-department">Bölüm</label>
         <input id="profile-department" name="department" type="text" required minlength="2" maxlength="100" />
+        <label for="profile-university">Üniversitem <span>(isteğe bağlı)</span></label>
+        <input id="profile-university" name="university" type="text" maxlength="160" placeholder="Üniversitenin adı" />
+        <label for="profile-bio">Biyografi <span>(isteğe bağlı · en fazla 500 karakter)</span></label>
+        <textarea id="profile-bio" name="bio" rows="4" maxlength="500" placeholder="Kendinden kısaca bahset…"></textarea>
         <label for="profile-avatar">Profil fotoğrafı <span>(JPG, PNG veya WebP · en fazla 5 MB)</span></label>
         <input id="profile-avatar" name="avatar" type="file" accept="image/jpeg,image/png,image/webp" />
         <p id="profile-status" class="community-status" role="status" aria-live="polite"></p>

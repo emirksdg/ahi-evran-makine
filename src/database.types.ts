@@ -55,6 +55,8 @@ export interface Database {
           id: string;
           display_name: string;
           department: string;
+          bio: string | null;
+          university_name: string | null;
           avatar_path: string | null;
           university_id: string | null;
           institution_verified_at: string | null;
@@ -65,6 +67,8 @@ export interface Database {
           id: string;
           display_name: string;
           department: string;
+          bio?: string | null;
+          university_name?: string | null;
           avatar_path?: string | null;
           university_id?: string | null;
           institution_verified_at?: string | null;
@@ -74,6 +78,8 @@ export interface Database {
         Update: {
           display_name?: string;
           department?: string;
+          bio?: string | null;
+          university_name?: string | null;
           avatar_path?: string | null;
           updated_at?: string;
         };

@@ -124,6 +124,8 @@ export async function updateProfile(input: {
   userId: string;
   displayName: string;
   department: string;
+  bio: string;
+  universityName: string;
   avatarFile?: File;
   previousAvatarPath: string | null;
 }): Promise<StudentProfile> {
@@ -159,6 +161,8 @@ export async function updateProfile(input: {
     .update({
       display_name: input.displayName.trim(),
       department: input.department.trim(),
+      bio: input.bio.trim() || null,
+      university_name: input.universityName.trim() || null,
       ...(newAvatarPath ? { avatar_path: newAvatarPath } : {}),
     })
     .eq("id", input.userId)
@@ -253,6 +257,21 @@ export async function createPost(input: {
   throwIfError(error);
 }
 
+export async function deletePost(input: {
+  postId: string;
+  userId: string;
+}): Promise<void> {
+  const { data, error } = await client()
+    .from("posts")
+    .delete()
+    .eq("id", input.postId)
+    .eq("author_id", input.userId)
+    .select("id")
+    .maybeSingle();
+  throwIfError(error);
+  if (!data) throw new Error("Fikir silinemedi. Yalnızca kendi fikirlerini silebilirsin.");
+}
+
 export async function loadPostComments(postId: string): Promise<PostComment[]> {
   const db = client();
   const { data: comments, error } = await db
@@ -307,6 +326,23 @@ export async function createPostComment(input: {
     content: input.content,
   });
   throwIfError(error);
+}
+
+export async function deletePostComment(input: {
+  commentId: string;
+  authorId: string;
+}): Promise<void> {
+  const { data, error } = await client()
+    .from("post_comments")
+    .delete()
+    .eq("id", input.commentId)
+    .eq("author_id", input.authorId)
+    .select("id")
+    .maybeSingle();
+  throwIfError(error);
+  if (!data) {
+    throw new Error("Yorum silinemedi. Yalnızca kendi yorumlarını silebilirsin.");
+  }
 }
 
 export async function togglePostLike(input: {
@@ -428,6 +464,25 @@ export async function sendMessage(input: {
   throwIfError(error);
 }
 
+export async function deleteMessage(input: {
+  messageId: string;
+  userId: string;
+  groupId: string;
+}): Promise<void> {
+  const { data, error } = await client()
+    .from("messages")
+    .delete()
+    .eq("id", input.messageId)
+    .eq("author_id", input.userId)
+    .eq("group_id", input.groupId)
+    .select("id")
+    .maybeSingle();
+  throwIfError(error);
+  if (!data) {
+    throw new Error("Mesaj silinemedi. Yalnızca kendi mesajlarını silebilirsin.");
+  }
+}
+
 export function watchCommunity(onChange: () => void): () => void {
   const db = client();
   const channel = db
@@ -467,6 +522,15 @@ export function watchGroupMessages(
         schema: "public",
         table: "messages",
         filter: `group_id=eq.${groupId}`,
+      },
+      onChange,
+    )
+    .on(
+      "postgres_changes",
+      {
+        event: "DELETE",
+        schema: "public",
+        table: "messages",
       },
       onChange,
     )
