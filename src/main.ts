@@ -27,6 +27,51 @@ function requiredElement<T extends HTMLElement>(selector: string): T {
   return node;
 }
 
+type Theme = "light" | "dark";
+
+const themeToggle = requiredElement<HTMLButtonElement>("#theme-toggle");
+const themeStatus = requiredElement<HTMLElement>("#theme-status");
+const themeStorageKey = "fikirfonksiyonu-theme";
+const themeColor = document.querySelector<HTMLMetaElement>(
+  'meta[name="theme-color"]',
+);
+let savedTheme: Theme = "light";
+
+try {
+  savedTheme =
+    window.localStorage.getItem(themeStorageKey) === "dark" ? "dark" : "light";
+} catch {
+  themeStatus.textContent =
+    "Tema tercihi bu tarayıcıdan okunamadı; tema bu oturum için değiştirilebilir.";
+}
+
+function applyTheme(theme: Theme, persist = false): void {
+  const isDark = theme === "dark";
+  const nextLabel = isDark ? "Açık temaya geç" : "Koyu temaya geç";
+  document.documentElement.dataset.theme = theme;
+  themeToggle.setAttribute("aria-pressed", String(isDark));
+  themeToggle.setAttribute("aria-label", nextLabel);
+  themeToggle.title = nextLabel;
+  themeColor?.setAttribute("content", isDark ? "#101815" : "#f6f5f0");
+
+  if (!persist) return;
+
+  try {
+    window.localStorage.setItem(themeStorageKey, theme);
+    themeStatus.textContent = "";
+  } catch {
+    themeStatus.textContent =
+      "Tema değişti ancak tercihin bu tarayıcıya kaydedilemedi.";
+  }
+}
+
+applyTheme(savedTheme);
+themeToggle.addEventListener("click", () => {
+  const currentTheme =
+    document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+  applyTheme(currentTheme === "dark" ? "light" : "dark", true);
+});
+
 const courseDialog = requiredElement<HTMLDialogElement>("#course-dialog");
 const courseDialogClose = requiredElement<HTMLButtonElement>(
   "#course-dialog-close",
