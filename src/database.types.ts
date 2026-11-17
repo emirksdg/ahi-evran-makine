@@ -242,6 +242,7 @@ export interface Database {
             | "group_join_request"
             | "group_join_approved"
             | "group_join_rejected"
+            | "group_member_removed"
             | "group_message"
             | "post_comment"
             | "post_like";
@@ -260,6 +261,7 @@ export interface Database {
             | "group_join_request"
             | "group_join_approved"
             | "group_join_rejected"
+            | "group_member_removed"
             | "group_message"
             | "post_comment"
             | "post_like";
@@ -419,6 +421,13 @@ export interface Database {
         Args: {
           target_request_id: string;
           approve: boolean;
+        };
+        Returns: undefined;
+      };
+      remove_group_member: {
+        Args: {
+          target_group_id: string;
+          target_user_id: string;
         };
         Returns: undefined;
       };

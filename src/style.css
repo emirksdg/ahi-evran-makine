@@ -2087,6 +2087,11 @@ html[data-theme="dark"] .theme-toggle__icon--sun {
   background: var(--forest);
 }
 
+.group-member-remove {
+  border-color: #d7aaaa;
+  color: #9c3d3d;
+}
+
 .group-join-request__action:disabled {
   cursor: wait;
   opacity: 0.6;
@@ -3907,6 +3912,11 @@ html[data-theme="dark"] .group-join-request__action--approve {
   border-color: var(--accent);
   color: #080d16;
   background: var(--accent);
+}
+
+html[data-theme="dark"] .group-member-remove {
+  border-color: #714d54;
+  color: #ffb6bd;
 }
 
 html[data-theme="dark"] .group-action--chat {

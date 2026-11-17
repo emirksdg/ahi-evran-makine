@@ -12,6 +12,7 @@ import {
   loadContentReports,
   loadBlockedUsers,
   loadGroupJoinRequests,
+  loadGroupMembers,
   loadGroups,
   loadMessages,
   loadNotifications,
@@ -27,6 +28,7 @@ import {
   markNotificationRead,
   registerWithEmail,
   requestGroupJoin,
+  removeGroupMember,
   reviewGroupJoinRequest,
   sendMessage,
   sendPasswordReset,
@@ -45,6 +47,7 @@ import {
   type ContentReport,
   type FeedbackCategory,
   type GroupJoinRequest,
+  type GroupMember,
   type GroupMessage,
   type UserNotification,
   type PostComment,
@@ -242,6 +245,18 @@ export function initializeSocialCommunity(): void {
   );
   const groupRequestsList = requiredElement<HTMLElement>(
     "#group-requests-list",
+  );
+  const groupMembersDialog = requiredElement<HTMLDialogElement>(
+    "#group-members-dialog",
+  );
+  const groupMembersTitle = requiredElement<HTMLElement>(
+    "#group-members-title",
+  );
+  const groupMembersStatus = requiredElement<HTMLElement>(
+    "#group-members-status",
+  );
+  const groupMembersList = requiredElement<HTMLElement>(
+    "#group-members-list",
   );
   const groupChatDialog =
     requiredElement<HTMLDialogElement>("#group-chat-dialog");
@@ -871,6 +886,14 @@ export function initializeSocialCommunity(): void {
     });
     actions.append(action);
     if (group.owner_id === user?.id) {
+      const membersButton = element("button", "group-action");
+      membersButton.type = "button";
+      membersButton.textContent = `Üyeleri yönet (${group.memberCount})`;
+      membersButton.addEventListener("click", () => {
+        void openGroupMembers(group);
+      });
+      actions.append(membersButton);
+
       const requestsButton = element("button", "group-action");
       requestsButton.type = "button";
       requestsButton.textContent =
@@ -1006,9 +1029,103 @@ export function initializeSocialCommunity(): void {
     }
   }
 
+  function createGroupMemberCard(
+    group: StudentGroup,
+    member: GroupMember,
+  ): HTMLElement {
+    const card = element("article", "group-join-request");
+    const copy = element("div", "group-join-request__copy");
+    const name = element("p");
+    name.textContent =
+      member.user_id === group.owner_id
+        ? `${member.display_name} · Topluluk sahibi`
+        : member.display_name;
+    const department = element("p");
+    department.textContent = member.department;
+    copy.append(name, department);
+    card.append(copy);
+
+    if (member.user_id !== group.owner_id) {
+      const removeButton = element(
+        "button",
+        "group-join-request__action group-member-remove",
+      );
+      removeButton.type = "button";
+      removeButton.textContent = "Üyeyi çıkar";
+      removeButton.setAttribute(
+        "aria-label",
+        `${member.display_name} adlı üyeyi topluluktan çıkar`,
+      );
+      removeButton.addEventListener("click", async () => {
+        if (
+          !user ||
+          !window.confirm(
+            `${member.display_name} adlı üyeyi "${group.name}" topluluğundan çıkarmak istiyor musun?`,
+          )
+        ) {
+          return;
+        }
+        removeButton.disabled = true;
+        groupMembersStatus.textContent = "";
+        try {
+          await removeGroupMember({
+            groupId: group.id,
+            userId: member.user_id,
+          });
+          try {
+            await Promise.all([refreshGroupMembers(group), refreshGroups()]);
+            groupMembersStatus.textContent =
+              `${member.display_name} topluluktan çıkarıldı.`;
+          } catch (error) {
+            groupMembersStatus.textContent =
+              `Üye çıkarıldı, ancak liste yenilenemedi: ${describeError(error)}`;
+          }
+        } catch (error) {
+          groupMembersStatus.textContent = describeError(error);
+        } finally {
+          removeButton.disabled = false;
+        }
+      });
+      card.append(removeButton);
+    }
+
+    return card;
+  }
+
+  async function refreshGroupMembers(group: StudentGroup): Promise<void> {
+    groupMembersStatus.textContent = "Üyeler yükleniyor…";
+    const members = await loadGroupMembers(group.id);
+    if (members.length === 0) {
+      groupMembersList.replaceChildren();
+      groupMembersStatus.textContent = "Bu toplulukta henüz üye yok.";
+      return;
+    }
+    groupMembersList.replaceChildren(
+      ...members.map((member) => createGroupMemberCard(group, member)),
+    );
+    groupMembersStatus.textContent = "";
+  }
+
+  async function openGroupMembers(group: StudentGroup): Promise<void> {
+    if (!user || group.owner_id !== user.id) return;
+    groupMembersTitle.textContent = `${group.name} — üyeler`;
+    groupMembersStatus.textContent = "Üyeler yükleniyor…";
+    groupMembersList.replaceChildren();
+    groupMembersDialog.showModal();
+    try {
+      await refreshGroupMembers(group);
+    } catch (error) {
+      groupMembersStatus.textContent = describeError(error);
+    }
+  }
+
   groupRequestsDialog.addEventListener("close", () => {
     activeJoinRequestGroup = null;
   });
+  requiredElement<HTMLButtonElement>("#group-members-close").addEventListener(
+    "click",
+    () => groupMembersDialog.close(),
+  );
 
   async function refreshGroups(): Promise<void> {
     if (!user) return;
@@ -1195,6 +1312,7 @@ export function initializeSocialCommunity(): void {
 
   function createMessageCard(message: GroupMessage): HTMLElement {
     const ownMessage = message.author.id === user?.id;
+    const groupOwner = activeChatGroup?.owner_id === user?.id;
     const card = element(
       "article",
       ownMessage ? "chat-message chat-message--own" : "chat-message",
@@ -1207,7 +1325,7 @@ export function initializeSocialCommunity(): void {
     const content = element("p", "chat-message__content");
     content.textContent = message.content;
     card.append(meta, content);
-    if (ownMessage) {
+    if (user && (ownMessage || groupOwner)) {
       const deleteButton = createDeleteButton("Sohbet mesajını sil");
       deleteButton.addEventListener("click", async () => {
         const groupId = activeChatGroup?.id;
@@ -1223,7 +1341,6 @@ export function initializeSocialCommunity(): void {
         try {
           await deleteMessage({
             messageId: message.id,
-            userId: user.id,
             groupId,
           });
           await refreshMessages(groupId);
@@ -1235,7 +1352,8 @@ export function initializeSocialCommunity(): void {
         }
       });
       card.append(deleteButton);
-    } else if (user) {
+    }
+    if (user && !ownMessage) {
       card.append(createReportButton("message", message.id));
       card.append(
         createBlockButton(

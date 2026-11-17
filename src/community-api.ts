@@ -63,6 +63,13 @@ export interface GroupJoinRequest extends GroupJoinRequestRow {
   requester: Pick<ProfileRow, "id" | "display_name" | "department">;
 }
 
+export interface GroupMember {
+  user_id: string;
+  joined_at: string;
+  display_name: string;
+  department: string;
+}
+
 export type UserNotification = NotificationRow;
 
 export interface BlockedUser
@@ -619,6 +626,52 @@ export async function reviewGroupJoinRequest(input: {
   throwIfError(error);
 }
 
+export async function loadGroupMembers(
+  groupId: string,
+): Promise<GroupMember[]> {
+  const db = client();
+  const { data: members, error } = await db
+    .from("group_members")
+    .select("user_id, joined_at")
+    .eq("group_id", groupId)
+    .order("joined_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  if (members.length === 0) return [];
+
+  const memberIds = members.map((member) => member.user_id);
+  const { data: profiles, error: profilesError } = await db
+    .from("profiles")
+    .select("id, display_name, department")
+    .in("id", memberIds);
+  if (profilesError) throw new Error(profilesError.message);
+  const profilesById = new Map(profiles.map((profile) => [profile.id, profile]));
+
+  return members.flatMap((member) => {
+    const profile = profilesById.get(member.user_id);
+    return profile
+      ? [
+          {
+            user_id: member.user_id,
+            joined_at: member.joined_at,
+            display_name: profile.display_name,
+            department: profile.department,
+          },
+        ]
+      : [];
+  });
+}
+
+export async function removeGroupMember(input: {
+  groupId: string;
+  userId: string;
+}): Promise<void> {
+  const { error } = await client().rpc("remove_group_member", {
+    target_group_id: input.groupId,
+    target_user_id: input.userId,
+  });
+  throwIfError(error);
+}
+
 export async function loadNotifications(
   userId: string,
 ): Promise<UserNotification[]> {
@@ -797,14 +850,12 @@ export async function sendMessage(input: {
 
 export async function deleteMessage(input: {
   messageId: string;
-  userId: string;
   groupId: string;
 }): Promise<void> {
   const { data, error } = await client()
     .from("messages")
     .delete()
     .eq("id", input.messageId)
-    .eq("author_id", input.userId)
     .eq("group_id", input.groupId)
     .select("id")
     .maybeSingle();
