@@ -6,7 +6,10 @@ type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 type PostRow = Database["public"]["Tables"]["posts"]["Row"];
 type PostCommentRow = Database["public"]["Tables"]["post_comments"]["Row"];
 type GroupRow = Database["public"]["Tables"]["groups"]["Row"];
+type GroupJoinRequestRow =
+  Database["public"]["Tables"]["group_join_requests"]["Row"];
 type MessageRow = Database["public"]["Tables"]["messages"]["Row"];
+export type GroupJoinRequestStatus = GroupJoinRequestRow["status"];
 export type ReportTargetType = "post" | "comment" | "message" | "group";
 export type ReportReason =
   | "spam"
@@ -44,6 +47,12 @@ export type ProfileIdea = Pick<
 
 export interface StudentGroup extends GroupRow {
   joined: boolean;
+  joinRequestStatus: GroupJoinRequestStatus | null;
+  pendingJoinRequestCount: number;
+}
+
+export interface GroupJoinRequest extends GroupJoinRequestRow {
+  requester: Pick<ProfileRow, "id" | "display_name" | "department">;
 }
 
 export interface GroupMessage extends MessageRow {
@@ -469,18 +478,37 @@ export async function togglePostLike(input: {
 
 export async function loadGroups(userId: string): Promise<StudentGroup[]> {
   const db = client();
-  const [groupsResult, membershipsResult] = await Promise.all([
+  const [groupsResult, membershipsResult, requestsResult] = await Promise.all([
     db.from("groups").select("*").order("created_at", { ascending: false }),
     db.from("group_members").select("group_id").eq("user_id", userId),
+    db
+      .from("group_join_requests")
+      .select("group_id, requester_id, status"),
   ]);
   if (groupsResult.error) throw new Error(groupsResult.error.message);
   if (membershipsResult.error) throw new Error(membershipsResult.error.message);
+  if (requestsResult.error) throw new Error(requestsResult.error.message);
   const joinedIds = new Set(
     membershipsResult.data.map((membership) => membership.group_id),
   );
+  const ownRequestStatus = new Map(
+    requestsResult.data
+      .filter((request) => request.requester_id === userId)
+      .map((request) => [request.group_id, request.status]),
+  );
+  const pendingRequestCounts = new Map<string, number>();
+  for (const request of requestsResult.data) {
+    if (request.status !== "pending") continue;
+    pendingRequestCounts.set(
+      request.group_id,
+      (pendingRequestCounts.get(request.group_id) ?? 0) + 1,
+    );
+  }
   return groupsResult.data.map((group) => ({
     ...group,
     joined: joinedIds.has(group.id),
+    joinRequestStatus: ownRequestStatus.get(group.id) ?? null,
+    pendingJoinRequestCount: pendingRequestCounts.get(group.id) ?? 0,
   }));
 }
 
@@ -514,13 +542,47 @@ export async function deleteGroup(input: {
   }
 }
 
-export async function joinGroup(input: {
-  userId: string;
-  groupId: string;
+export async function requestGroupJoin(groupId: string): Promise<void> {
+  const { error } = await client().rpc("request_group_join", {
+    target_group_id: groupId,
+  });
+  throwIfError(error);
+}
+
+export async function loadGroupJoinRequests(
+  groupId: string,
+): Promise<GroupJoinRequest[]> {
+  const db = client();
+  const { data: requests, error } = await db
+    .from("group_join_requests")
+    .select("*")
+    .eq("group_id", groupId)
+    .eq("status", "pending")
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  if (requests.length === 0) return [];
+
+  const requesterIds = [...new Set(requests.map((request) => request.requester_id))];
+  const { data: profiles, error: profilesError } = await db
+    .from("profiles")
+    .select("id, display_name, department")
+    .in("id", requesterIds);
+  if (profilesError) throw new Error(profilesError.message);
+  const profilesById = new Map(profiles.map((profile) => [profile.id, profile]));
+
+  return requests.flatMap((request) => {
+    const requester = profilesById.get(request.requester_id);
+    return requester ? [{ ...request, requester }] : [];
+  });
+}
+
+export async function reviewGroupJoinRequest(input: {
+  requestId: string;
+  approve: boolean;
 }): Promise<void> {
-  const { error } = await client().from("group_members").insert({
-    user_id: input.userId,
-    group_id: input.groupId,
+  const { error } = await client().rpc("review_group_join_request", {
+    target_request_id: input.requestId,
+    approve: input.approve,
   });
   throwIfError(error);
 }
@@ -612,6 +674,11 @@ export function watchCommunity(onChange: () => void): () => void {
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "groups" },
+      onChange,
+    )
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "group_join_requests" },
       onChange,
     )
     .on(

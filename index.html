@@ -237,6 +237,14 @@
                 <h3>Kendi çevreni <span>bul.</span></h3>
                 <p>Ortak ilgi alanlarında buluş, bir çalışma grubu başlat.</p>
               </div>
+              <label class="sr-only" for="group-search">Topluluk adı veya sohbet ID ara</label>
+              <input
+                class="group-search"
+                id="group-search"
+                type="search"
+                autocomplete="off"
+                placeholder="Topluluk veya sohbet ID ara"
+              />
               <button class="button button--outline group-create-button" id="create-group-button" type="button" hidden>
                 <span aria-hidden="true">＋</span> Topluluk oluştur
               </button>
@@ -430,14 +438,30 @@
       </form>
     </dialog>
 
+    <dialog class="group-dialog group-requests-dialog" id="group-requests-dialog" aria-labelledby="group-requests-title">
+      <div class="group-dialog__content">
+        <div class="course-dialog__header">
+          <p class="course-dialog__eyebrow">TOPLULUK YÖNETİMİ</p>
+          <button class="course-dialog__close" id="group-requests-close" type="button" aria-label="Pencereyi kapat">×</button>
+        </div>
+        <h2 id="group-requests-title">Katılma istekleri</h2>
+        <p id="group-requests-status" class="community-status" role="status" aria-live="polite"></p>
+        <div id="group-requests-list" class="group-requests-list"></div>
+      </div>
+    </dialog>
+
     <dialog class="group-chat-dialog" id="group-chat-dialog" aria-labelledby="group-chat-title">
       <div class="group-chat">
         <div class="course-dialog__header">
           <div>
             <p class="course-dialog__eyebrow">TOPLULUK SOHBETİ</p>
             <h2 id="group-chat-title"></h2>
+            <p class="group-chat__id">Sohbet ID: <code id="group-chat-id"></code></p>
           </div>
-          <button class="course-dialog__close" id="group-chat-close" type="button" aria-label="Sohbeti kapat">×</button>
+          <div class="group-chat__header-actions">
+            <button class="group-chat__copy-id" id="group-chat-copy-id" type="button">ID'yi kopyala</button>
+            <button class="course-dialog__close" id="group-chat-close" type="button" aria-label="Sohbeti kapat">×</button>
+          </div>
         </div>
         <p id="group-chat-status" class="community-status" role="status" aria-live="polite"></p>
         <div class="group-chat__messages" id="group-chat-messages" aria-live="polite"></div>

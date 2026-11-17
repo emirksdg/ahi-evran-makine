@@ -16,6 +16,19 @@ export interface StudentGroup {
   description: string;
 }
 
+export function filterGroups<T extends StudentGroup>(
+  groups: T[],
+  query: string,
+): T[] {
+  const normalizedQuery = query.trim().toLocaleLowerCase("tr-TR");
+  if (!normalizedQuery) return groups;
+  return groups.filter((group) =>
+    `${group.name} ${group.description} ${group.id}`
+      .toLocaleLowerCase("tr-TR")
+      .includes(normalizedQuery),
+  );
+}
+
 export const maxPostLength = 500;
 export const maxCommentLength = 2000;
 export const maxGroupNameLength = 48;

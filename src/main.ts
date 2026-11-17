@@ -1,4 +1,5 @@
 import {
+  filterGroups,
   isPostCategory,
   parseGroups,
   parsePosts,
@@ -84,6 +85,7 @@ const postContent = requiredElement<HTMLTextAreaElement>("#post-content");
 const postCategory = requiredElement<HTMLSelectElement>("#post-category");
 const postCounter = requiredElement<HTMLElement>("#post-counter");
 const groupList = requiredElement<HTMLElement>("#group-list");
+const groupSearchInput = requiredElement<HTMLInputElement>("#group-search");
 const groupDialog = requiredElement<HTMLDialogElement>("#group-dialog");
 const groupForm = requiredElement<HTMLFormElement>("#group-form");
 const groupName = requiredElement<HTMLInputElement>("#group-name");
@@ -293,10 +295,20 @@ function createGroupCard(group: StudentGroup): HTMLElement {
 }
 
 function renderGroups(): void {
-  groupList.replaceChildren(
-    ...[...studentGroups, ...exampleGroups].map(createGroupCard),
+  const visibleGroups = filterGroups(
+    [...studentGroups, ...exampleGroups],
+    groupSearchInput.value,
   );
+  if (visibleGroups.length === 0) {
+    const empty = element("p", "group-list__empty");
+    empty.textContent = "Aramana uygun topluluk veya sohbet bulunamadı.";
+    groupList.replaceChildren(empty);
+    return;
+  }
+  groupList.replaceChildren(...visibleGroups.map(createGroupCard));
 }
+
+groupSearchInput.addEventListener("input", renderGroups);
 
 communityPosts = loadLocalCollection(
   postsStorageKey,

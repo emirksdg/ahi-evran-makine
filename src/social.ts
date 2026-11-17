@@ -8,8 +8,8 @@ import {
   deletePost,
   deletePostComment,
   isModerator,
-  joinGroup,
   loadContentReports,
+  loadGroupJoinRequests,
   loadGroups,
   loadMessages,
   loadPosts,
@@ -20,6 +20,8 @@ import {
   moderateContentReport,
   markSiteFeedbackReviewed,
   registerWithEmail,
+  requestGroupJoin,
+  reviewGroupJoinRequest,
   sendMessage,
   sendPasswordReset,
   signInWithEmail,
@@ -34,6 +36,7 @@ import {
   type FeedPost,
   type ContentReport,
   type FeedbackCategory,
+  type GroupJoinRequest,
   type GroupMessage,
   type PostComment,
   type ReportReason,
@@ -44,6 +47,7 @@ import {
   type StudentProfile,
 } from "./community-api";
 import {
+  filterGroups,
   isPostCategory,
   validateCommentContent,
   validateGroup,
@@ -190,9 +194,26 @@ export function initializeSocialCommunity(): void {
   const groupFormStatus = requiredElement<HTMLElement>("#group-form-status");
   const groupDialog = requiredElement<HTMLDialogElement>("#group-dialog");
   const groupList = requiredElement<HTMLElement>("#group-list");
+  const groupSearchInput = requiredElement<HTMLInputElement>("#group-search");
+  const groupRequestsDialog = requiredElement<HTMLDialogElement>(
+    "#group-requests-dialog",
+  );
+  const groupRequestsTitle = requiredElement<HTMLElement>(
+    "#group-requests-title",
+  );
+  const groupRequestsStatus = requiredElement<HTMLElement>(
+    "#group-requests-status",
+  );
+  const groupRequestsList = requiredElement<HTMLElement>(
+    "#group-requests-list",
+  );
   const groupChatDialog =
     requiredElement<HTMLDialogElement>("#group-chat-dialog");
   const groupChatTitle = requiredElement<HTMLElement>("#group-chat-title");
+  const groupChatId = requiredElement<HTMLElement>("#group-chat-id");
+  const groupChatCopyId = requiredElement<HTMLButtonElement>(
+    "#group-chat-copy-id",
+  );
   const groupChatStatus =
     requiredElement<HTMLElement>("#group-chat-status");
   const groupChatMessages =
@@ -261,6 +282,7 @@ export function initializeSocialCommunity(): void {
   let groups: StudentGroup[] = [];
   let activeFilter = "Tümü";
   let activeChatGroup: StudentGroup | null = null;
+  let activeJoinRequestGroup: StudentGroup | null = null;
   let moderator = false;
   let selectedReportTarget: {
     type: ReportTargetType;
@@ -664,6 +686,19 @@ export function initializeSocialCommunity(): void {
       : "Paylaşımları görmek ve katkıda bulunmak için e-posta ile giriş yap.";
   }
 
+  function renderGroups(): void {
+    const visibleGroups = filterGroups(groups, groupSearchInput.value);
+    if (visibleGroups.length === 0) {
+      const empty = element("p", "group-list__empty");
+      empty.textContent = groups.length
+        ? "Aramana uygun topluluk veya sohbet bulunamadı."
+        : "Henüz topluluk yok. İlk grubu oluşturup arkadaşlarını davet et.";
+      groupList.replaceChildren(empty);
+      return;
+    }
+    groupList.replaceChildren(...visibleGroups.map(createGroupCard));
+  }
+
   function createGroupCard(group: StudentGroup): HTMLElement {
     const card = element("article", "group-card");
     const mark = element("span", "group-card__mark");
@@ -685,8 +720,11 @@ export function initializeSocialCommunity(): void {
       ? "İçerik gizli"
       : group.joined
         ? "Sohbete gir"
-        : "Katıl";
-    action.disabled = group.is_hidden;
+        : group.joinRequestStatus === "pending"
+          ? "İstek gönderildi"
+          : "Sohbete katıl";
+    action.disabled =
+      group.is_hidden || group.joinRequestStatus === "pending";
     action.classList.toggle("group-action--chat", group.joined);
     action.addEventListener("click", async () => {
       if (group.is_hidden) return;
@@ -697,9 +735,15 @@ export function initializeSocialCommunity(): void {
       if (!group.joined) {
         action.disabled = true;
         try {
-          await joinGroup({ userId: user.id, groupId: group.id });
-          await refreshGroups();
-          setStatus("Topluluğa katıldın.");
+          await requestGroupJoin(group.id);
+          setStatus("Katılma isteğin topluluk sahibine gönderildi.");
+          try {
+            await refreshGroups();
+          } catch (error) {
+            setStatus(
+              `İstek gönderildi ancak topluluk listesi yenilenemedi: ${describeError(error)}`,
+            );
+          }
         } catch (error) {
           setStatus(describeError(error));
         } finally {
@@ -711,6 +755,19 @@ export function initializeSocialCommunity(): void {
     });
     actions.append(action);
     if (group.owner_id === user?.id) {
+      const requestsButton = element("button", "group-action");
+      requestsButton.type = "button";
+      requestsButton.textContent =
+        `İstekler (${group.pendingJoinRequestCount})`;
+      requestsButton.setAttribute(
+        "aria-label",
+        `${group.name}: ${group.pendingJoinRequestCount} bekleyen katılma isteği`,
+      );
+      requestsButton.addEventListener("click", () => {
+        void openGroupJoinRequests(group);
+      });
+      actions.append(requestsButton);
+
       const deleteButton = element("button", "group-action group-action--delete");
       deleteButton.type = "button";
       deleteButton.textContent = "Sil";
@@ -750,18 +807,100 @@ export function initializeSocialCommunity(): void {
     return card;
   }
 
+  function createGroupJoinRequestCard(
+    group: StudentGroup,
+    request: GroupJoinRequest,
+  ): HTMLElement {
+    const card = element("article", "group-join-request");
+    const copy = element("div", "group-join-request__copy");
+    const message = element("p");
+    message.textContent =
+      `${request.requester.display_name} bu sohbete katılmak istiyor.`;
+    const department = element("p");
+    department.textContent = request.requester.department;
+    copy.append(message, department);
+
+    const actions = element("div", "group-join-request__actions");
+    const approveButton = element("button", "group-join-request__action group-join-request__action--approve");
+    approveButton.type = "button";
+    approveButton.textContent = "Onayla";
+    const rejectButton = element("button", "group-join-request__action");
+    rejectButton.type = "button";
+    rejectButton.textContent = "Reddet";
+
+    const decide = async (approve: boolean) => {
+      approveButton.disabled = true;
+      rejectButton.disabled = true;
+      groupRequestsStatus.textContent = "";
+      try {
+        await reviewGroupJoinRequest({ requestId: request.id, approve });
+        try {
+          await refreshGroups();
+          await refreshGroupJoinRequests(group);
+          groupRequestsStatus.textContent = approve
+            ? `${request.requester.display_name} topluluğa eklendi.`
+            : "Katılma isteği reddedildi.";
+        } catch (error) {
+          groupRequestsStatus.textContent =
+            `İstek değerlendirildi ancak liste yenilenemedi: ${describeError(error)}`;
+        }
+      } catch (error) {
+        groupRequestsStatus.textContent = describeError(error);
+      } finally {
+        approveButton.disabled = false;
+        rejectButton.disabled = false;
+      }
+    };
+
+    approveButton.addEventListener("click", () => void decide(true));
+    rejectButton.addEventListener("click", () => void decide(false));
+    actions.append(approveButton, rejectButton);
+    card.append(copy, actions);
+    return card;
+  }
+
+  async function refreshGroupJoinRequests(
+    group: StudentGroup,
+  ): Promise<void> {
+    const requests = await loadGroupJoinRequests(group.id);
+    if (activeJoinRequestGroup?.id !== group.id) return;
+    if (requests.length === 0) {
+      const empty = element("p", "group-list__empty");
+      empty.textContent = "Bekleyen katılma isteği yok.";
+      groupRequestsList.replaceChildren(empty);
+      return;
+    }
+    groupRequestsList.replaceChildren(
+      ...requests.map((request) => createGroupJoinRequestCard(group, request)),
+    );
+  }
+
+  async function openGroupJoinRequests(group: StudentGroup): Promise<void> {
+    if (!user || group.owner_id !== user.id) return;
+    activeJoinRequestGroup = group;
+    groupRequestsTitle.textContent = `${group.name} — katılma istekleri`;
+    groupRequestsStatus.textContent = "İstekler yükleniyor…";
+    groupRequestsList.replaceChildren();
+    groupRequestsDialog.showModal();
+    try {
+      await refreshGroupJoinRequests(group);
+      groupRequestsStatus.textContent = "";
+    } catch (error) {
+      groupRequestsStatus.textContent = describeError(error);
+    }
+  }
+
+  groupRequestsDialog.addEventListener("close", () => {
+    activeJoinRequestGroup = null;
+  });
+
   async function refreshGroups(): Promise<void> {
     if (!user) return;
     groups = await loadGroups(user.id);
-    if (groups.length === 0) {
-      const empty = element("p", "group-list__empty");
-      empty.textContent =
-        "Henüz topluluk yok. İlk grubu oluşturup arkadaşlarını davet et.";
-      groupList.replaceChildren(empty);
-      return;
-    }
-    groupList.replaceChildren(...groups.map(createGroupCard));
+    renderGroups();
   }
+
+  groupSearchInput.addEventListener("input", renderGroups);
 
   function createMessageCard(message: GroupMessage): HTMLElement {
     const ownMessage = message.author.id === user?.id;
@@ -827,6 +966,7 @@ export function initializeSocialCommunity(): void {
     if (stopMessageWatch) stopMessageWatch();
     activeChatGroup = group;
     groupChatTitle.textContent = group.name;
+    groupChatId.textContent = group.id;
     groupChatStatus.textContent = "Mesajlar yükleniyor…";
     groupChatMessages.replaceChildren();
     groupChatDialog.showModal();
@@ -1033,6 +1173,8 @@ export function initializeSocialCommunity(): void {
     stopCommunityWatch = null;
     stopMessageWatch = null;
     activeChatGroup = null;
+    activeJoinRequestGroup = null;
+    if (groupRequestsDialog.open) groupRequestsDialog.close();
     moderator = false;
     moderationQueueButton.hidden = true;
     siteFeedbackQueueButton.hidden = true;
@@ -1083,6 +1225,12 @@ export function initializeSocialCommunity(): void {
         void Promise.all([refreshPosts(), refreshGroups()]).catch(
           (error: unknown) => setStatus(describeError(error)),
         );
+        if (activeJoinRequestGroup) {
+          void refreshGroupJoinRequests(activeJoinRequestGroup).catch(
+            (error: unknown) =>
+              (groupRequestsStatus.textContent = describeError(error)),
+          );
+        }
       });
     } catch (error) {
       setStatus(describeError(error));
@@ -1417,6 +1565,13 @@ export function initializeSocialCommunity(): void {
     "click",
     () => groupDialog.close(),
   );
+  requiredElement<HTMLButtonElement>("#group-requests-close").addEventListener(
+    "click",
+    () => {
+      activeJoinRequestGroup = null;
+      groupRequestsDialog.close();
+    },
+  );
   groupForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!user) {
@@ -1445,7 +1600,9 @@ export function initializeSocialCommunity(): void {
       groupForm.reset();
       groupDialog.close();
       await refreshGroups();
-      setStatus("Topluluk oluşturuldu; üyeler katılıp sohbete başlayabilir.");
+      setStatus(
+        "Topluluk oluşturuldu; katılma isteklerini onayladığında üyeler sohbete girebilir.",
+      );
     } catch (error) {
       groupFormStatus.textContent = describeError(error);
     } finally {
@@ -1461,6 +1618,16 @@ export function initializeSocialCommunity(): void {
       groupChatDialog.close();
     },
   );
+  groupChatCopyId.addEventListener("click", async () => {
+    if (!activeChatGroup) return;
+    try {
+      await navigator.clipboard.writeText(activeChatGroup.id);
+      groupChatStatus.textContent = "Sohbet ID'si panoya kopyalandı.";
+    } catch (error) {
+      groupChatStatus.textContent =
+        `Sohbet ID'si kopyalanamadı: ${describeError(error)}`;
+    }
+  });
   groupChatForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!user || !activeChatGroup) return;

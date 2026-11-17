@@ -213,6 +213,26 @@ export interface Database {
         Update: never;
         Relationships: [];
       };
+      group_join_requests: {
+        Row: {
+          id: string;
+          group_id: string;
+          requester_id: string;
+          status: "pending" | "approved" | "rejected";
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          group_id: string;
+          requester_id: string;
+          status?: "pending" | "approved" | "rejected";
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: never;
+        Relationships: [];
+      };
       messages: {
         Row: {
           id: string;
@@ -336,6 +356,19 @@ export interface Database {
       mark_site_feedback_reviewed: {
         Args: {
           p_feedback_id: string;
+        };
+        Returns: undefined;
+      };
+      request_group_join: {
+        Args: {
+          target_group_id: string;
+        };
+        Returns: string;
+      };
+      review_group_join_request: {
+        Args: {
+          target_request_id: string;
+          approve: boolean;
         };
         Returns: undefined;
       };

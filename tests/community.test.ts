@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   parseGroups,
   parsePosts,
+  filterGroups,
   validateGroup,
   validateCommentContent,
   validatePostContent,
@@ -53,6 +54,23 @@ describe("validateGroup", () => {
     expect(validateGroup(" ", "").valid).toBe(false);
     expect(validateGroup("x".repeat(49), "").valid).toBe(false);
     expect(validateGroup("Gezi", "x".repeat(141)).valid).toBe(false);
+  });
+});
+
+describe("filterGroups", () => {
+  const groups = [
+    { id: "uuid-1234", name: "Tasarım", description: "Atölye" },
+    { id: "uuid-5678", name: "Ders", description: "Çalışma grubu" },
+  ];
+
+  it("searches group names, descriptions, and unique chat IDs", () => {
+    expect(filterGroups(groups, "tasarım")).toEqual([groups[0]]);
+    expect(filterGroups(groups, "ÇALIŞMA")).toEqual([groups[1]]);
+    expect(filterGroups(groups, "1234")).toEqual([groups[0]]);
+  });
+
+  it("returns all groups for an empty query", () => {
+    expect(filterGroups(groups, "  ")).toEqual(groups);
   });
 });
 
