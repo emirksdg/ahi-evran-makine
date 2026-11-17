@@ -16,6 +16,9 @@ export type ReportReason =
   | "other";
 export type ContentReport =
   Database["public"]["Tables"]["content_reports"]["Row"];
+export type FeedbackCategory = "design" | "feature" | "issue" | "other";
+export type SiteFeedback =
+  Database["public"]["Tables"]["site_feedback"]["Row"];
 
 export interface PostComment extends PostCommentRow {
   author: Pick<ProfileRow, "id" | "display_name" | "department"> & {
@@ -335,6 +338,36 @@ export async function moderateContentReport(input: {
   const { error } = await client().rpc("moderate_content_report", {
     p_report_id: input.reportId,
     p_decision: input.decision,
+  });
+  throwIfError(error);
+}
+
+export async function submitSiteFeedback(input: {
+  category: FeedbackCategory;
+  message: string;
+}): Promise<void> {
+  const { error } = await client().rpc("submit_site_feedback", {
+    p_category: input.category,
+    p_message: input.message,
+  });
+  throwIfError(error);
+}
+
+export async function loadSiteFeedback(): Promise<SiteFeedback[]> {
+  const { data, error } = await client()
+    .from("site_feedback")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function markSiteFeedbackReviewed(
+  feedbackId: string,
+): Promise<void> {
+  const { error } = await client().rpc("mark_site_feedback_reviewed", {
+    p_feedback_id: feedbackId,
   });
   throwIfError(error);
 }

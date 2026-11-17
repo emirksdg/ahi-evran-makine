@@ -14,15 +14,18 @@ import {
   loadMessages,
   loadPosts,
   loadProfileIdeas,
+  loadSiteFeedback,
   loadPostComments,
   loadProfile,
   moderateContentReport,
+  markSiteFeedbackReviewed,
   registerWithEmail,
   sendMessage,
   sendPasswordReset,
   signInWithEmail,
   signOut,
   submitContentReport,
+  submitSiteFeedback,
   togglePostLike,
   updatePassword,
   updateProfile,
@@ -30,11 +33,13 @@ import {
   watchGroupMessages,
   type FeedPost,
   type ContentReport,
+  type FeedbackCategory,
   type GroupMessage,
   type PostComment,
   type ReportReason,
   type ReportTargetType,
   type ProfileIdea,
+  type SiteFeedback,
   type StudentGroup,
   type StudentProfile,
 } from "./community-api";
@@ -89,6 +94,10 @@ function isReportReason(value: string): value is ReportReason {
   return ["spam", "harassment", "inappropriate", "privacy", "other"].includes(
     value,
   );
+}
+
+function isFeedbackCategory(value: string): value is FeedbackCategory {
+  return ["design", "feature", "issue", "other"].includes(value);
 }
 
 export function initializeSocialCommunity(): void {
@@ -209,6 +218,39 @@ export function initializeSocialCommunity(): void {
   );
   const moderationQueueList = requiredElement<HTMLElement>(
     "#moderation-queue-list",
+  );
+  const siteFeedbackForm = requiredElement<HTMLFormElement>(
+    "#site-feedback-form",
+  );
+  const siteFeedbackLoginNote = requiredElement<HTMLElement>(
+    "#site-feedback-login-note",
+  );
+  const siteFeedbackLoginButton = requiredElement<HTMLButtonElement>(
+    "#site-feedback-login-button",
+  );
+  const siteFeedbackCategory = requiredElement<HTMLSelectElement>(
+    "#site-feedback-category",
+  );
+  const siteFeedbackMessage = requiredElement<HTMLTextAreaElement>(
+    "#site-feedback-message",
+  );
+  const siteFeedbackStatus = requiredElement<HTMLElement>(
+    "#site-feedback-status",
+  );
+  const siteFeedbackSubmit = requiredElement<HTMLButtonElement>(
+    "#site-feedback-submit",
+  );
+  const siteFeedbackQueueButton = requiredElement<HTMLButtonElement>(
+    "#site-feedback-queue-button",
+  );
+  const siteFeedbackQueueDialog = requiredElement<HTMLDialogElement>(
+    "#site-feedback-queue-dialog",
+  );
+  const siteFeedbackQueueStatus = requiredElement<HTMLElement>(
+    "#site-feedback-queue-status",
+  );
+  const siteFeedbackQueueList = requiredElement<HTMLElement>(
+    "#site-feedback-queue-list",
   );
   const authMode = { value: "login" as "login" | "register" | "reset" };
   let authSuccessTimeout: number | null = null;
@@ -917,6 +959,72 @@ export function initializeSocialCommunity(): void {
     moderationQueueStatus.textContent = "";
   }
 
+  const feedbackCategoryLabels: Record<FeedbackCategory, string> = {
+    design: "Tasarım önerisi",
+    feature: "Yeni özellik önerisi",
+    issue: "Sorun bildirimi",
+    other: "Diğer",
+  };
+
+  function createSiteFeedbackCard(feedback: SiteFeedback): HTMLElement {
+    const card = element("article", "moderation-report");
+    const header = element("div", "moderation-report__header");
+    const sender = element("p", "moderation-report__target");
+    sender.textContent = `${feedback.user_display_name} · ${feedbackCategoryLabels[feedback.category]}`;
+    const date = element("time", "moderation-report__date");
+    date.dateTime = feedback.created_at;
+    date.textContent = new Intl.DateTimeFormat("tr-TR", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(feedback.created_at));
+    header.append(sender, date);
+
+    const message = element("p", "moderation-report__excerpt");
+    message.textContent = feedback.message;
+    const status = element("p", "moderation-report__status");
+    status.textContent =
+      feedback.status === "new" ? "Yeni geri bildirim" : "İncelendi";
+    card.append(header, message, status);
+
+    if (feedback.status === "new") {
+      const actions = element("div", "moderation-report__actions");
+      const markButton = element("button", "moderation-report__action");
+      markButton.type = "button";
+      markButton.textContent = "İncelendi olarak işaretle";
+      markButton.addEventListener("click", async () => {
+        if (!moderator) return;
+        markButton.disabled = true;
+        siteFeedbackQueueStatus.textContent = "Güncelleniyor…";
+        try {
+          await markSiteFeedbackReviewed(feedback.id);
+          await refreshSiteFeedback();
+        } catch (error) {
+          siteFeedbackQueueStatus.textContent = describeError(error);
+          markButton.disabled = false;
+        }
+      });
+      actions.append(markButton);
+      card.append(actions);
+    }
+
+    return card;
+  }
+
+  async function refreshSiteFeedback(): Promise<void> {
+    if (!moderator) return;
+    siteFeedbackQueueStatus.textContent = "Geri bildirimler yükleniyor…";
+    const feedbackItems = await loadSiteFeedback();
+    siteFeedbackQueueList.replaceChildren(
+      ...feedbackItems.map(createSiteFeedbackCard),
+    );
+    if (feedbackItems.length === 0) {
+      const empty = element("p", "moderation-queue__empty");
+      empty.textContent = "Henüz geri bildirim gönderilmemiş.";
+      siteFeedbackQueueList.append(empty);
+    }
+    siteFeedbackQueueStatus.textContent = "";
+  }
+
   async function setSignedInUser(nextUser: User | null): Promise<void> {
     if (initializedAuthState && user?.id === nextUser?.id) return;
     initializedAuthState = true;
@@ -927,6 +1035,7 @@ export function initializeSocialCommunity(): void {
     activeChatGroup = null;
     moderator = false;
     moderationQueueButton.hidden = true;
+    siteFeedbackQueueButton.hidden = true;
     user = nextUser;
     profile = null;
     posts = [];
@@ -936,6 +1045,9 @@ export function initializeSocialCommunity(): void {
     signedInControls.hidden = !nextUser;
     loginButton.hidden = Boolean(nextUser);
     postForm.hidden = !nextUser;
+    siteFeedbackForm.hidden = !nextUser;
+    siteFeedbackLoginNote.hidden = Boolean(nextUser);
+    siteFeedbackStatus.textContent = "";
     requiredElement<HTMLButtonElement>("#create-group-button").hidden = !nextUser;
     requiredElement<HTMLButtonElement>("#create-group-button").disabled =
       !nextUser;
@@ -966,6 +1078,7 @@ export function initializeSocialCommunity(): void {
         setStatus(describeError(error));
       }
       moderationQueueButton.hidden = !moderator;
+      siteFeedbackQueueButton.hidden = !moderator;
       stopCommunityWatch = watchCommunity(() => {
         void Promise.all([refreshPosts(), refreshGroups()]).catch(
           (error: unknown) => setStatus(describeError(error)),
@@ -1418,6 +1531,51 @@ export function initializeSocialCommunity(): void {
       await refreshModerationReports();
     } catch (error) {
       moderationQueueStatus.textContent = describeError(error);
+    }
+  });
+  siteFeedbackLoginButton.addEventListener("click", () => openAuth());
+  siteFeedbackForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!user) {
+      openAuth();
+      return;
+    }
+
+    const category = siteFeedbackCategory.value;
+    if (!isFeedbackCategory(category)) {
+      siteFeedbackStatus.textContent = "Bir geri bildirim konusu seç.";
+      return;
+    }
+    const message = siteFeedbackMessage.value.trim();
+    if (message.length < 10 || message.length > 1000) {
+      siteFeedbackStatus.textContent =
+        "Geri bildirimin 10–1000 karakter arasında olmalı.";
+      return;
+    }
+
+    siteFeedbackSubmit.disabled = true;
+    siteFeedbackStatus.textContent = "Geri bildirimin gönderiliyor…";
+    try {
+      await submitSiteFeedback({ category, message });
+      siteFeedbackForm.reset();
+      siteFeedbackStatus.textContent =
+        "Teşekkürler! Geri bildirimin yöneticiye ulaştı.";
+    } catch (error) {
+      siteFeedbackStatus.textContent = describeError(error);
+    } finally {
+      siteFeedbackSubmit.disabled = false;
+    }
+  });
+  requiredElement<HTMLButtonElement>(
+    "#site-feedback-queue-close",
+  ).addEventListener("click", () => siteFeedbackQueueDialog.close());
+  siteFeedbackQueueButton.addEventListener("click", async () => {
+    if (!moderator) return;
+    siteFeedbackQueueDialog.showModal();
+    try {
+      await refreshSiteFeedback();
+    } catch (error) {
+      siteFeedbackQueueStatus.textContent = describeError(error);
     }
   });
 

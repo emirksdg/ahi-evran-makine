@@ -32,8 +32,9 @@ tarafından incelenir.
 3. Sonra diğer migration dosyalarını zaman damgası sırasıyla çalıştır:
    `20261116160000_student_network.sql`,
    `20261116223000_profile_bio_university.sql` ve
-   `20261117150000_moderation.sql`.
-4. Moderasyon migration'ı tamamlandıktan ve moderatör hesabı kayıt olduktan
+   `20261117150000_moderation.sql`,
+   `20261117151500_site_feedback.sql`.
+4. Moderasyon migration'ları tamamlandıktan ve moderatör hesabı kayıt olduktan
    sonra, SQL Editor'de aşağıdaki sorguyu çalıştır. `MODERATOR_EMAIL_HERE`
    yerine moderatör olacak kayıtlı hesabın e-posta adresini yaz. Bu sorgu
    kullanıcıyı yetkilendirir; e-posta adresini uygulama koduna veya Git deposuna
@@ -73,8 +74,11 @@ tutulmaz. Profiller yalnızca giriş yapan kullanıcılara açıktır; avatar bu
 yalnızca bir kez bildirebilir. Moderatör kuyruğundan içerik gizlenebilir,
 yeniden görünür yapılabilir veya şikâyet reddedilebilir. Topluluk mesajları,
 gönderiler ve profil alanları kişisel veri içerebileceğinden gizlilik metni ve
-veri saklama/silme politikasını ayrıca belirleyin. Veritabanı migration'ı ve
-moderatör rolü etkinleşmeden güncellenmiş arayüzü yayımlamayın.
+veri saklama/silme politikasını ayrıca belirleyin. Geri bildirimleri yalnızca
+giriş yapan kullanıcılar gönderebilir; günde 5 gönderiyle sınırlıdır ve
+moderatör panelinden okunup incelendi olarak işaretlenebilir. Geri bildirim için
+e-posta bildirimi gönderilmez. İlgili migration'lar veritabanında etkinleşmeden
+güncellenmiş arayüzü yayımlamayın.
 
 ## İçerik kaynakları
 

@@ -277,6 +277,32 @@ export interface Database {
         Update: never;
         Relationships: [];
       };
+      site_feedback: {
+        Row: {
+          id: string;
+          user_id: string;
+          user_display_name: string;
+          category: "design" | "feature" | "issue" | "other";
+          message: string;
+          status: "new" | "reviewed";
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          user_display_name: string;
+          category: "design" | "feature" | "issue" | "other";
+          message: string;
+          status?: "new" | "reviewed";
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          created_at?: string;
+        };
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -297,6 +323,19 @@ export interface Database {
         Args: {
           p_report_id: string;
           p_decision: string;
+        };
+        Returns: undefined;
+      };
+      submit_site_feedback: {
+        Args: {
+          p_category: string;
+          p_message: string;
+        };
+        Returns: string;
+      };
+      mark_site_feedback_reviewed: {
+        Args: {
+          p_feedback_id: string;
         };
         Returns: undefined;
       };

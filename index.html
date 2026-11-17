@@ -209,9 +209,14 @@
                   <p class="eyebrow">TOPLULUK AKIŞI</p>
                   <h3>Kampüsten <span>son paylaşımlar</span></h3>
                 </div>
-                <button class="button button--outline moderation-queue-button" id="moderation-queue-button" type="button" hidden>
-                  Şikâyet kuyruğu
-                </button>
+                <div class="admin-queue-actions">
+                  <button class="button button--outline moderation-queue-button" id="moderation-queue-button" type="button" hidden>
+                    Şikâyet kuyruğu
+                  </button>
+                  <button class="button button--outline moderation-queue-button" id="site-feedback-queue-button" type="button" hidden>
+                    Geri bildirimler
+                  </button>
+                </div>
                 <div class="feed-filters" role="group" aria-label="Paylaşım filtresi">
                   <button class="feed-filter is-active" type="button" data-feed-filter="Tümü" aria-pressed="true">Tümü</button>
                   <button class="feed-filter" type="button" data-feed-filter="Fikir" aria-pressed="false">Fikirler</button>
@@ -262,6 +267,35 @@
           </p>
         </div>
         <div class="about-section__mark" aria-hidden="true">K.</div>
+      </section>
+
+      <section class="site-feedback" id="geri-bildirim" aria-labelledby="site-feedback-title">
+        <div class="site-feedback__inner">
+          <div class="site-feedback__intro">
+            <p class="eyebrow">BİRLİKTE GELİŞTİRELİM</p>
+            <h2 id="site-feedback-title">Bir fikrin mi var?</h2>
+            <p>Siteyi daha iyi hâle getirecek önerini veya karşılaştığın sorunu bize ilet.</p>
+          </div>
+          <div class="site-feedback__form-area">
+            <div class="site-feedback__login" id="site-feedback-login-note">
+              <p>Geri bildirim göndermek için hesabınla giriş yap.</p>
+              <button class="button button--primary" id="site-feedback-login-button" type="button">Giriş yap</button>
+            </div>
+            <form class="site-feedback__form" id="site-feedback-form" hidden>
+              <label for="site-feedback-category">Konu</label>
+              <select id="site-feedback-category" name="category" required>
+                <option value="feature">Yeni özellik önerisi</option>
+                <option value="design">Tasarım önerisi</option>
+                <option value="issue">Sorun bildirimi</option>
+                <option value="other">Diğer</option>
+              </select>
+              <label for="site-feedback-message">Geri bildirimin</label>
+              <textarea id="site-feedback-message" name="message" minlength="10" maxlength="1000" rows="4" required placeholder="Önerini veya karşılaştığın sorunu yaz…"></textarea>
+              <p class="community-status" id="site-feedback-status" role="status" aria-live="polite"></p>
+              <button class="button button--primary" id="site-feedback-submit" type="submit">Geri bildirimi gönder</button>
+            </form>
+          </div>
+        </div>
       </section>
     </main>
 
@@ -448,6 +482,19 @@
         <p>İçerikleri incele; gerekirse gizle, yeniden görünür yap veya şikâyeti reddet.</p>
         <p class="community-status" id="moderation-queue-status" role="status" aria-live="polite"></p>
         <div class="moderation-queue" id="moderation-queue-list"></div>
+      </section>
+    </dialog>
+
+    <dialog class="moderation-dialog" id="site-feedback-queue-dialog" aria-labelledby="site-feedback-queue-title">
+      <section class="moderation-dialog__content">
+        <div class="course-dialog__header">
+          <p class="course-dialog__eyebrow">YÖNETİCİ PANELİ</p>
+          <button class="course-dialog__close" id="site-feedback-queue-close" type="button" aria-label="Geri bildirimleri kapat">×</button>
+        </div>
+        <h2 id="site-feedback-queue-title">Site geri bildirimleri.</h2>
+        <p>Kullanıcıların önerilerini burada görebilirsin.</p>
+        <p class="community-status" id="site-feedback-queue-status" role="status" aria-live="polite"></p>
+        <div class="moderation-queue" id="site-feedback-queue-list"></div>
       </section>
     </dialog>
 
