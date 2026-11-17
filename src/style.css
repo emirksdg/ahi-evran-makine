@@ -167,8 +167,13 @@ select:focus-visible {
   stroke: #e9a087;
 }
 
-.brand-mark__spark {
+.brand-mark__function {
   fill: #f7f4ee;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 10px;
+  font-style: italic;
+  font-weight: 700;
+  letter-spacing: 0.15px;
 }
 
 .brand__text {
