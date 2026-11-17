@@ -40,7 +40,7 @@ jobs:
         run: npm test
 
       - name: Build website
-        run: npm run build
+        run: npm run build -- --base=/ahi-evran-makine/
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
