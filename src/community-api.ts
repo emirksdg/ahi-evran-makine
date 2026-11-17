@@ -7,6 +7,15 @@ type PostRow = Database["public"]["Tables"]["posts"]["Row"];
 type PostCommentRow = Database["public"]["Tables"]["post_comments"]["Row"];
 type GroupRow = Database["public"]["Tables"]["groups"]["Row"];
 type MessageRow = Database["public"]["Tables"]["messages"]["Row"];
+export type ReportTargetType = "post" | "comment" | "message" | "group";
+export type ReportReason =
+  | "spam"
+  | "harassment"
+  | "inappropriate"
+  | "privacy"
+  | "other";
+export type ContentReport =
+  Database["public"]["Tables"]["content_reports"]["Row"];
 
 export interface PostComment extends PostCommentRow {
   author: Pick<ProfileRow, "id" | "display_name" | "department"> & {
@@ -270,6 +279,48 @@ export async function deletePost(input: {
     .maybeSingle();
   throwIfError(error);
   if (!data) throw new Error("Fikir silinemedi. Yalnızca kendi fikirlerini silebilirsin.");
+}
+
+export async function isModerator(): Promise<boolean> {
+  const { data, error } = await client().rpc("is_moderator");
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function submitContentReport(input: {
+  targetType: ReportTargetType;
+  targetId: string;
+  reason: ReportReason;
+  details: string;
+}): Promise<void> {
+  const { error } = await client().rpc("submit_content_report", {
+    p_target_type: input.targetType,
+    p_target_id: input.targetId,
+    p_reason: input.reason,
+    p_details: input.details,
+  });
+  throwIfError(error);
+}
+
+export async function loadContentReports(): Promise<ContentReport[]> {
+  const { data, error } = await client()
+    .from("content_reports")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function moderateContentReport(input: {
+  reportId: string;
+  decision: "hide" | "restore" | "dismiss";
+}): Promise<void> {
+  const { error } = await client().rpc("moderate_content_report", {
+    p_report_id: input.reportId,
+    p_decision: input.decision,
+  });
+  throwIfError(error);
 }
 
 export async function loadPostComments(postId: string): Promise<PostComment[]> {

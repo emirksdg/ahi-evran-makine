@@ -101,6 +101,7 @@ export interface Database {
           category: "Fikir" | "Ders" | "Kampüs";
           like_count: number;
           group_id: string | null;
+          is_hidden: boolean;
           created_at: string;
         };
         Insert: {
@@ -110,6 +111,7 @@ export interface Database {
           category: "Fikir" | "Ders" | "Kampüs";
           like_count?: number;
           group_id?: string | null;
+          is_hidden?: boolean;
           created_at?: string;
         };
         Update: {
@@ -132,6 +134,7 @@ export interface Database {
           post_id: string;
           author_id: string;
           content: string;
+          is_hidden: boolean;
           created_at: string;
         };
         Insert: {
@@ -139,6 +142,7 @@ export interface Database {
           post_id: string;
           author_id: string;
           content: string;
+          is_hidden?: boolean;
           created_at?: string;
         };
         Update: never;
@@ -174,6 +178,7 @@ export interface Database {
           scope: "global" | "university";
           university_id: string | null;
           department: string | null;
+          is_hidden: boolean;
           created_at: string;
         };
         Insert: {
@@ -184,6 +189,7 @@ export interface Database {
           scope?: "global" | "university";
           university_id?: string | null;
           department?: string | null;
+          is_hidden?: boolean;
           created_at?: string;
         };
         Update: {
@@ -213,6 +219,7 @@ export interface Database {
           group_id: string;
           author_id: string;
           content: string;
+          is_hidden: boolean;
           created_at: string;
         };
         Insert: {
@@ -220,6 +227,51 @@ export interface Database {
           group_id: string;
           author_id: string;
           content: string;
+          is_hidden?: boolean;
+          created_at?: string;
+        };
+        Update: never;
+        Relationships: [];
+      };
+      content_reports: {
+        Row: {
+          id: string;
+          reporter_id: string;
+          target_type: "post" | "comment" | "message" | "group";
+          target_id: string;
+          target_excerpt: string;
+          target_author_name: string;
+          target_hidden: boolean;
+          reason:
+            | "spam"
+            | "harassment"
+            | "inappropriate"
+            | "privacy"
+            | "other";
+          details: string;
+          status: "open" | "reviewed" | "dismissed";
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          reporter_id: string;
+          target_type: "post" | "comment" | "message" | "group";
+          target_id: string;
+          target_excerpt: string;
+          target_author_name: string;
+          target_hidden?: boolean;
+          reason:
+            | "spam"
+            | "harassment"
+            | "inappropriate"
+            | "privacy"
+            | "other";
+          details?: string;
+          status?: "open" | "reviewed" | "dismissed";
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
           created_at?: string;
         };
         Update: never;
@@ -227,7 +279,28 @@ export interface Database {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      is_moderator: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      submit_content_report: {
+        Args: {
+          p_target_type: string;
+          p_target_id: string;
+          p_reason: string;
+          p_details?: string;
+        };
+        Returns: string;
+      };
+      moderate_content_report: {
+        Args: {
+          p_report_id: string;
+          p_decision: string;
+        };
+        Returns: undefined;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

@@ -2703,6 +2703,200 @@ html[data-theme="dark"] .theme-toggle__icon--sun {
   width: 100%;
 }
 
+.moderation-queue-button {
+  min-height: 40px;
+  white-space: nowrap;
+}
+
+.content-report-button {
+  padding: 0.2rem 0.35rem;
+  border: 0;
+  border-radius: 5px;
+  color: #806646;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+.content-report-button:hover {
+  color: #684d2e;
+  background: #f5f0e7;
+}
+
+.moderation-dialog {
+  width: min(620px, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #dce6dd;
+  border-radius: 20px;
+  color: var(--ink);
+  background: linear-gradient(160deg, #fff 0%, #fbfdf9 100%);
+  box-shadow: 0 28px 90px rgb(11 31 24 / 28%);
+}
+
+.moderation-dialog::backdrop {
+  background: rgb(13 28 22 / 55%);
+  backdrop-filter: blur(3px);
+}
+
+.moderation-dialog__content {
+  padding: clamp(1.25rem, 5vw, 2rem);
+}
+
+.moderation-dialog__content .course-dialog__header h2 {
+  margin: 0.3rem 0 0;
+  font-family: var(--heading);
+  font-size: 1.35rem;
+}
+
+.moderation-dialog__content h2 {
+  margin: 0.8rem 2rem 0.65rem 0;
+  font-family: var(--heading);
+  font-size: clamp(1.65rem, 5vw, 2rem);
+  letter-spacing: -0.05em;
+  line-height: 1.15;
+}
+
+.moderation-dialog__content > p:not(.community-status) {
+  color: #69736b;
+  font-size: 0.82rem;
+  line-height: 1.7;
+}
+
+.moderation-dialog__content > label {
+  display: block;
+  margin: 1rem 0 0.4rem;
+  color: #475348;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.moderation-dialog__content > label span {
+  color: #8b948b;
+  font-weight: 400;
+}
+
+.moderation-dialog__content select,
+.moderation-dialog__content textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #e0e4d9;
+  border-radius: 9px;
+  color: var(--ink);
+  background: #fbfbf7;
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.moderation-dialog__content textarea {
+  resize: vertical;
+}
+
+#report-form > .button {
+  width: 100%;
+}
+
+.moderation-queue {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.moderation-report {
+  padding: 0.85rem;
+  border: 1px solid #e2e8de;
+  border-radius: 12px;
+  background: #f8f9f5;
+}
+
+.moderation-report__header,
+.moderation-report__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.moderation-report__target,
+.moderation-report__date,
+.moderation-report__excerpt,
+.moderation-report__reason,
+.moderation-report__details,
+.moderation-report__status {
+  margin: 0;
+}
+
+.moderation-report__target {
+  color: #34463a;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.moderation-report__date,
+.moderation-report__status {
+  color: #858d84;
+  font-size: 0.63rem;
+}
+
+.moderation-report__excerpt {
+  margin-top: 0.6rem;
+  color: #414c43;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.moderation-report__reason,
+.moderation-report__details {
+  margin-top: 0.4rem;
+  color: #69736b;
+  font-size: 0.7rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.moderation-report__status {
+  margin-top: 0.45rem;
+  font-weight: 700;
+}
+
+.moderation-report__actions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin-top: 0.7rem;
+}
+
+.moderation-report__action {
+  padding: 0.4rem 0.55rem;
+  border: 1px solid #d9e1d3;
+  border-radius: 7px;
+  color: #475c46;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+.moderation-report__action:disabled {
+  cursor: default;
+  opacity: 0.48;
+}
+
+.moderation-report__action--dismiss {
+  color: #95604e;
+}
+
+.moderation-queue__empty {
+  padding: 1rem;
+  color: #69736b;
+  text-align: center;
+}
+
 html[data-theme="dark"] {
   color-scheme: dark;
   --paper: #19221e;
@@ -2858,15 +3052,29 @@ html[data-theme="dark"] .group-chat-dialog {
   background: #1a2520;
 }
 
+html[data-theme="dark"] .moderation-dialog {
+  border-color: #3b4b40;
+  color: var(--ink);
+  background: #1a2520;
+}
+
 html[data-theme="dark"] .course-dialog > p:not(.course-dialog__eyebrow),
 html[data-theme="dark"] .account-dialog__content > p:not(.eyebrow),
 html[data-theme="dark"] .group-dialog__content > p:not(.community-status) {
   color: #b2beb5;
 }
 
+html[data-theme="dark"] .moderation-dialog__content > p:not(.community-status),
+html[data-theme="dark"] .moderation-report__reason,
+html[data-theme="dark"] .moderation-report__details,
+html[data-theme="dark"] .moderation-queue__empty {
+  color: #b2beb5;
+}
+
 html[data-theme="dark"] .course-dialog__eyebrow,
 html[data-theme="dark"] .account-dialog__content > label,
 html[data-theme="dark"] .group-dialog__content > label,
+html[data-theme="dark"] .moderation-dialog__content > label,
 html[data-theme="dark"] .auth-register-fields > label {
   color: #c1d1c5;
 }
@@ -2876,8 +3084,14 @@ html[data-theme="dark"] .group-dialog__content > label span {
   color: #9eaca2;
 }
 
+html[data-theme="dark"] .moderation-dialog__content > label span {
+  color: #9eaca2;
+}
+
 html[data-theme="dark"] .group-dialog input,
 html[data-theme="dark"] .group-dialog textarea,
+html[data-theme="dark"] .moderation-dialog__content select,
+html[data-theme="dark"] .moderation-dialog__content textarea,
 html[data-theme="dark"] .account-dialog__content > input,
 html[data-theme="dark"] .account-dialog__content > textarea,
 html[data-theme="dark"] .auth-register-fields > input,
@@ -3012,6 +3226,40 @@ html[data-theme="dark"] .post-comments__toggle {
 html[data-theme="dark"] .post-comment {
   border-color: #35453b;
   background: #202b24;
+}
+
+html[data-theme="dark"] .moderation-report {
+  border-color: #35453b;
+  background: #202b24;
+}
+
+html[data-theme="dark"] .moderation-report__target,
+html[data-theme="dark"] .moderation-report__excerpt {
+  color: #dce8de;
+}
+
+html[data-theme="dark"] .moderation-report__date,
+html[data-theme="dark"] .moderation-report__status {
+  color: #a7b3ac;
+}
+
+html[data-theme="dark"] .moderation-report__action {
+  border-color: #455548;
+  color: #d0ddd1;
+  background: #263229;
+}
+
+html[data-theme="dark"] .moderation-report__action--dismiss {
+  color: #f0aaa0;
+}
+
+html[data-theme="dark"] .content-report-button {
+  color: #d3bd95;
+}
+
+html[data-theme="dark"] .content-report-button:hover {
+  color: #f0d7a6;
+  background: #30362c;
 }
 
 html[data-theme="dark"] .post-comment__name {

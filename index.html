@@ -209,6 +209,9 @@
                   <p class="eyebrow">TOPLULUK AKIŞI</p>
                   <h3>Kampüsten <span>son paylaşımlar</span></h3>
                 </div>
+                <button class="button button--outline moderation-queue-button" id="moderation-queue-button" type="button" hidden>
+                  Şikâyet kuyruğu
+                </button>
                 <div class="feed-filters" role="group" aria-label="Paylaşım filtresi">
                   <button class="feed-filter is-active" type="button" data-feed-filter="Tümü" aria-pressed="true">Tümü</button>
                   <button class="feed-filter" type="button" data-feed-filter="Fikir" aria-pressed="false">Fikirler</button>
@@ -379,6 +382,42 @@
           <button class="button button--primary" type="submit">Gönder</button>
         </form>
       </div>
+    </dialog>
+
+    <dialog class="moderation-dialog" id="report-dialog" aria-labelledby="report-dialog-title">
+      <form class="moderation-dialog__content" id="report-form">
+        <div class="course-dialog__header">
+          <p class="course-dialog__eyebrow">TOPLULUK GÜVENLİĞİ</p>
+          <button class="course-dialog__close" id="report-dialog-close" type="button" aria-label="Şikâyet penceresini kapat">×</button>
+        </div>
+        <h2 id="report-dialog-title">İçeriği bildir.</h2>
+        <p>Şikâyetin moderatör tarafından incelenir; içerik inceleme öncesinde otomatik olarak kaldırılmaz.</p>
+        <label for="report-reason">Şikâyet nedeni</label>
+        <select id="report-reason" name="reason" required>
+          <option value="spam">Spam veya yanıltıcı içerik</option>
+          <option value="harassment">Taciz veya zorbalık</option>
+          <option value="inappropriate">Uygunsuz içerik</option>
+          <option value="privacy">Kişisel bilgilerin paylaşılması</option>
+          <option value="other">Diğer</option>
+        </select>
+        <label for="report-details">Açıklama <span>(isteğe bağlı · en fazla 500 karakter)</span></label>
+        <textarea id="report-details" name="details" rows="4" maxlength="500" placeholder="Moderatöre yardımcı olacak ayrıntıları yaz…"></textarea>
+        <p class="community-status" id="report-status" role="status" aria-live="polite"></p>
+        <button class="button button--primary" id="report-submit" type="submit">Şikâyeti gönder</button>
+      </form>
+    </dialog>
+
+    <dialog class="moderation-dialog" id="moderation-queue-dialog" aria-labelledby="moderation-queue-title">
+      <section class="moderation-dialog__content">
+        <div class="course-dialog__header">
+          <p class="course-dialog__eyebrow">MODERATÖR PANELİ</p>
+          <button class="course-dialog__close" id="moderation-queue-close" type="button" aria-label="Kuyruğu kapat">×</button>
+        </div>
+        <h2 id="moderation-queue-title">Şikâyet kuyruğu.</h2>
+        <p>İçerikleri incele; gerekirse gizle, yeniden görünür yap veya şikâyeti reddet.</p>
+        <p class="community-status" id="moderation-queue-status" role="status" aria-live="polite"></p>
+        <div class="moderation-queue" id="moderation-queue-list"></div>
+      </section>
     </dialog>
 
     <footer class="site-footer">

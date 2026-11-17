@@ -7,25 +7,32 @@ import {
   deleteGroup,
   deletePost,
   deletePostComment,
+  isModerator,
   joinGroup,
+  loadContentReports,
   loadGroups,
   loadMessages,
   loadPosts,
   loadPostComments,
   loadProfile,
+  moderateContentReport,
   registerWithEmail,
   sendMessage,
   sendPasswordReset,
   signInWithEmail,
   signOut,
+  submitContentReport,
   togglePostLike,
   updatePassword,
   updateProfile,
   watchCommunity,
   watchGroupMessages,
   type FeedPost,
+  type ContentReport,
   type GroupMessage,
   type PostComment,
+  type ReportReason,
+  type ReportTargetType,
   type StudentGroup,
   type StudentProfile,
 } from "./community-api";
@@ -74,6 +81,12 @@ function describeError(error: unknown): string {
     return "Sunucuya bağlanılamadı. İnternet bağlantını kontrol edip tekrar dene.";
   }
   return error.message;
+}
+
+function isReportReason(value: string): value is ReportReason {
+  return ["spam", "harassment", "inappropriate", "privacy", "other"].includes(
+    value,
+  );
 }
 
 export function initializeSocialCommunity(): void {
@@ -152,6 +165,24 @@ export function initializeSocialCommunity(): void {
     requiredElement<HTMLFormElement>("#group-chat-form");
   const groupChatInput =
     requiredElement<HTMLTextAreaElement>("#group-chat-input");
+  const reportDialog = requiredElement<HTMLDialogElement>("#report-dialog");
+  const reportForm = requiredElement<HTMLFormElement>("#report-form");
+  const reportReason = requiredElement<HTMLSelectElement>("#report-reason");
+  const reportDetails = requiredElement<HTMLTextAreaElement>("#report-details");
+  const reportStatus = requiredElement<HTMLElement>("#report-status");
+  const reportSubmit = requiredElement<HTMLButtonElement>("#report-submit");
+  const moderationQueueButton = requiredElement<HTMLButtonElement>(
+    "#moderation-queue-button",
+  );
+  const moderationQueueDialog = requiredElement<HTMLDialogElement>(
+    "#moderation-queue-dialog",
+  );
+  const moderationQueueStatus = requiredElement<HTMLElement>(
+    "#moderation-queue-status",
+  );
+  const moderationQueueList = requiredElement<HTMLElement>(
+    "#moderation-queue-list",
+  );
   const authMode = { value: "login" as "login" | "register" | "reset" };
   let authSuccessTimeout: number | null = null;
 
@@ -161,6 +192,11 @@ export function initializeSocialCommunity(): void {
   let groups: StudentGroup[] = [];
   let activeFilter = "Tümü";
   let activeChatGroup: StudentGroup | null = null;
+  let moderator = false;
+  let selectedReportTarget: {
+    type: ReportTargetType;
+    id: string;
+  } | null = null;
   let stopCommunityWatch: (() => void) | null = null;
   let stopMessageWatch: (() => void) | null = null;
   let initializedAuthState = false;
@@ -174,6 +210,27 @@ export function initializeSocialCommunity(): void {
     button.type = "button";
     button.textContent = "Sil";
     button.setAttribute("aria-label", label);
+    return button;
+  }
+
+  function createReportButton(
+    targetType: ReportTargetType,
+    targetId: string,
+  ): HTMLButtonElement {
+    const button = element("button", "content-report-button");
+    button.type = "button";
+    button.textContent = "Şikâyet et";
+    button.addEventListener("click", () => {
+      if (!user) {
+        openAuth();
+        return;
+      }
+      selectedReportTarget = { type: targetType, id: targetId };
+      reportForm.reset();
+      reportStatus.textContent = "";
+      reportDialog.showModal();
+      reportReason.focus();
+    });
     return button;
   }
 
@@ -249,7 +306,9 @@ export function initializeSocialCommunity(): void {
     const card = element("article", "post-comment");
     const header = element("div", "post-comment__header");
     const name = element("p", "post-comment__name");
-    name.textContent = comment.author.display_name;
+    name.textContent = comment.is_hidden
+      ? `${comment.author.display_name} · Gizli`
+      : comment.author.display_name;
     const date = element("time", "post-comment__date");
     date.dateTime = comment.created_at;
     date.textContent = new Intl.DateTimeFormat("tr-TR", {
@@ -289,6 +348,8 @@ export function initializeSocialCommunity(): void {
         }
       });
       card.append(deleteButton);
+    } else if (user) {
+      card.append(createReportButton("comment", comment.id));
     }
     return card;
   }
@@ -324,7 +385,9 @@ export function initializeSocialCommunity(): void {
     identity.append(name, meta);
 
     const tag = element("span", "feed-card__tag");
-    tag.textContent = post.category;
+    tag.textContent = post.is_hidden
+      ? `${post.category} · Gizli`
+      : post.category;
     header.append(avatar, identity, tag);
 
     const body = element("p", "feed-card__body");
@@ -333,6 +396,7 @@ export function initializeSocialCommunity(): void {
     const footer = element("div", "feed-card__footer");
     const like = element("button", "feed-like");
     like.type = "button";
+    like.disabled = post.is_hidden;
     like.setAttribute("aria-pressed", String(post.liked));
     like.setAttribute(
       "aria-label",
@@ -377,6 +441,7 @@ export function initializeSocialCommunity(): void {
     commentStatus.setAttribute("aria-live", "polite");
 
     const commentForm = element("form", "post-comments__form");
+    commentForm.hidden = post.is_hidden;
     const commentInput = element("textarea", "post-comments__input");
     commentInput.maxLength = 2000;
     commentInput.rows = 2;
@@ -472,6 +537,8 @@ export function initializeSocialCommunity(): void {
         }
       });
       footer.append(deleteButton);
+    } else if (user) {
+      footer.append(createReportButton("post", post.id));
     }
     card.append(header, body, footer, commentsPanel);
     return card;
@@ -508,16 +575,22 @@ export function initializeSocialCommunity(): void {
       .toLocaleUpperCase("tr-TR");
     const copy = element("div", "group-card__copy");
     const name = element("p", "group-card__name");
-    name.textContent = group.name;
+    name.textContent = group.is_hidden ? `${group.name} · Gizli` : group.name;
     const description = element("p", "group-card__description");
     description.textContent = group.description || "Öğrenci topluluğu.";
     copy.append(name, description);
     const actions = element("div", "group-card__actions");
     const action = element("button", "group-action");
     action.type = "button";
-    action.textContent = group.joined ? "Sohbete gir" : "Katıl";
+    action.textContent = group.is_hidden
+      ? "İçerik gizli"
+      : group.joined
+        ? "Sohbete gir"
+        : "Katıl";
+    action.disabled = group.is_hidden;
     action.classList.toggle("group-action--chat", group.joined);
     action.addEventListener("click", async () => {
+      if (group.is_hidden) return;
       if (!user) {
         openAuth();
         return;
@@ -571,6 +644,8 @@ export function initializeSocialCommunity(): void {
         }
       });
       actions.append(deleteButton);
+    } else if (user) {
+      actions.append(createReportButton("group", group.id));
     }
     card.append(mark, copy, actions);
     return card;
@@ -596,7 +671,7 @@ export function initializeSocialCommunity(): void {
       ownMessage ? "chat-message chat-message--own" : "chat-message",
     );
     const meta = element("p", "chat-message__meta");
-    meta.textContent = `${message.author.display_name} · ${new Intl.DateTimeFormat(
+    meta.textContent = `${message.author.display_name}${message.is_hidden ? " · Gizli" : ""} · ${new Intl.DateTimeFormat(
       "tr-TR",
       { timeStyle: "short" },
     ).format(new Date(message.created_at))}`;
@@ -631,6 +706,8 @@ export function initializeSocialCommunity(): void {
         }
       });
       card.append(deleteButton);
+    } else if (user) {
+      card.append(createReportButton("message", message.id));
     }
     return card;
   }
@@ -667,6 +744,122 @@ export function initializeSocialCommunity(): void {
     }
   }
 
+  const reportReasonLabels: Record<ReportReason, string> = {
+    spam: "Spam veya yanıltıcı içerik",
+    harassment: "Taciz veya zorbalık",
+    inappropriate: "Uygunsuz içerik",
+    privacy: "Kişisel bilgilerin paylaşılması",
+    other: "Diğer",
+  };
+  const reportTargetLabels: Record<ReportTargetType, string> = {
+    post: "Paylaşım",
+    comment: "Yorum",
+    message: "Mesaj",
+    group: "Topluluk",
+  };
+
+  function createModerationReportCard(report: ContentReport): HTMLElement {
+    const card = element("article", "moderation-report");
+    const header = element("div", "moderation-report__header");
+    const target = element("p", "moderation-report__target");
+    target.textContent = `${reportTargetLabels[report.target_type]} · ${report.target_author_name}`;
+    const date = element("time", "moderation-report__date");
+    date.dateTime = report.created_at;
+    date.textContent = new Intl.DateTimeFormat("tr-TR", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(report.created_at));
+    header.append(target, date);
+
+    const excerpt = element("p", "moderation-report__excerpt");
+    excerpt.textContent = report.target_excerpt || "İçerik metni bulunmuyor.";
+    const reason = element("p", "moderation-report__reason");
+    reason.textContent = `Neden: ${reportReasonLabels[report.reason]}`;
+    const details = element("p", "moderation-report__details");
+    details.textContent = report.details || "Ek açıklama yok.";
+    const status = element("p", "moderation-report__status");
+    status.textContent =
+      report.status === "dismissed"
+        ? "Reddedildi"
+        : report.status === "reviewed"
+          ? "İncelendi"
+          : "Yeni şikâyet";
+    card.append(header, excerpt, reason, details, status);
+
+    if (report.status !== "dismissed") {
+      const actions = element("div", "moderation-report__actions");
+      const hideButton = element("button", "moderation-report__action");
+      hideButton.type = "button";
+      hideButton.textContent = "İçeriği gizle";
+      hideButton.disabled = report.target_hidden;
+      const restoreButton = element("button", "moderation-report__action");
+      restoreButton.type = "button";
+      restoreButton.textContent = "Görünür yap";
+      restoreButton.disabled = !report.target_hidden;
+      const dismissButton = element("button", "moderation-report__action moderation-report__action--dismiss");
+      dismissButton.type = "button";
+      dismissButton.textContent = "Şikâyeti reddet";
+
+      for (const [button, decision] of [
+        [hideButton, "hide"],
+        [restoreButton, "restore"],
+        [dismissButton, "dismiss"],
+      ] as const) {
+        button.addEventListener("click", async () => {
+          if (!moderator) return;
+          const actionButtons =
+            actions.querySelectorAll<HTMLButtonElement>("button");
+          actionButtons.forEach((actionButton) => {
+            actionButton.disabled = true;
+          });
+          moderationQueueStatus.textContent = "Karar uygulanıyor…";
+          try {
+            await moderateContentReport({
+              reportId: report.id,
+              decision,
+            });
+            moderationQueueStatus.textContent = "Karar kaydedildi.";
+            try {
+              await Promise.all([
+                refreshModerationReports(),
+                refreshPosts(),
+                refreshGroups(),
+                ...(activeChatGroup
+                  ? [refreshMessages(activeChatGroup.id)]
+                  : []),
+              ]);
+            } catch (error) {
+              moderationQueueStatus.textContent = `Karar kaydedildi, ancak içerik yenilenemedi: ${describeError(error)}`;
+            }
+          } catch (error) {
+            moderationQueueStatus.textContent = describeError(error);
+            hideButton.disabled = report.target_hidden;
+            restoreButton.disabled = !report.target_hidden;
+            dismissButton.disabled = false;
+          }
+        });
+      }
+      actions.append(hideButton, restoreButton, dismissButton);
+      card.append(actions);
+    }
+    return card;
+  }
+
+  async function refreshModerationReports(): Promise<void> {
+    if (!moderator) return;
+    moderationQueueStatus.textContent = "Şikâyetler yükleniyor…";
+    const reports = await loadContentReports();
+    moderationQueueList.replaceChildren(
+      ...reports.map(createModerationReportCard),
+    );
+    if (reports.length === 0) {
+      const empty = element("p", "moderation-queue__empty");
+      empty.textContent = "Henüz şikâyet yok.";
+      moderationQueueList.append(empty);
+    }
+    moderationQueueStatus.textContent = "";
+  }
+
   async function setSignedInUser(nextUser: User | null): Promise<void> {
     if (initializedAuthState && user?.id === nextUser?.id) return;
     initializedAuthState = true;
@@ -675,6 +868,8 @@ export function initializeSocialCommunity(): void {
     stopCommunityWatch = null;
     stopMessageWatch = null;
     activeChatGroup = null;
+    moderator = false;
+    moderationQueueButton.hidden = true;
     user = nextUser;
     profile = null;
     posts = [];
@@ -706,7 +901,14 @@ export function initializeSocialCommunity(): void {
         profile.display_name,
         profile.avatar_url,
       );
+      const moderatorCheck = isModerator();
       await Promise.all([refreshPosts(), refreshGroups()]);
+      try {
+        moderator = await moderatorCheck;
+      } catch (error) {
+        setStatus(describeError(error));
+      }
+      moderationQueueButton.hidden = !moderator;
       stopCommunityWatch = watchCommunity(() => {
         void Promise.all([refreshPosts(), refreshGroups()]).catch(
           (error: unknown) => setStatus(describeError(error)),
@@ -1062,6 +1264,52 @@ export function initializeSocialCommunity(): void {
       groupChatStatus.textContent = describeError(error);
     } finally {
       if (submit) submit.disabled = false;
+    }
+  });
+
+  requiredElement<HTMLButtonElement>("#report-dialog-close").addEventListener(
+    "click",
+    () => reportDialog.close(),
+  );
+  reportForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!user || !selectedReportTarget) {
+      reportDialog.close();
+      return;
+    }
+    const reason = reportReason.value;
+    if (!isReportReason(reason)) {
+      reportStatus.textContent = "Bir şikâyet nedeni seç.";
+      return;
+    }
+    reportSubmit.disabled = true;
+    reportStatus.textContent = "Şikâyetin gönderiliyor…";
+    try {
+      await submitContentReport({
+        targetType: selectedReportTarget.type,
+        targetId: selectedReportTarget.id,
+        reason,
+        details: reportDetails.value,
+      });
+      reportDialog.close();
+      selectedReportTarget = null;
+      setStatus("Şikâyetin moderatöre iletildi.");
+    } catch (error) {
+      reportStatus.textContent = describeError(error);
+    } finally {
+      reportSubmit.disabled = false;
+    }
+  });
+  requiredElement<HTMLButtonElement>(
+    "#moderation-queue-close",
+  ).addEventListener("click", () => moderationQueueDialog.close());
+  moderationQueueButton.addEventListener("click", async () => {
+    if (!moderator) return;
+    moderationQueueDialog.showModal();
+    try {
+      await refreshModerationReports();
+    } catch (error) {
+      moderationQueueStatus.textContent = describeError(error);
     }
   });
 
