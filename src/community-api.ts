@@ -34,6 +34,11 @@ export interface FeedPost extends PostRow {
   liked: boolean;
 }
 
+export type ProfileIdea = Pick<
+  PostRow,
+  "id" | "content" | "category" | "is_hidden" | "created_at"
+>;
+
 export interface StudentGroup extends GroupRow {
   joined: boolean;
 }
@@ -251,6 +256,17 @@ export async function loadPosts(userId: string): Promise<FeedPost[]> {
       },
     ];
   });
+}
+
+export async function loadProfileIdeas(userId: string): Promise<ProfileIdea[]> {
+  const { data, error } = await client()
+    .from("posts")
+    .select("id, content, category, is_hidden, created_at")
+    .eq("author_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw new Error(error.message);
+  return data;
 }
 
 export async function createPost(input: {

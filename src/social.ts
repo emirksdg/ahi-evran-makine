@@ -13,6 +13,7 @@ import {
   loadGroups,
   loadMessages,
   loadPosts,
+  loadProfileIdeas,
   loadPostComments,
   loadProfile,
   moderateContentReport,
@@ -33,6 +34,7 @@ import {
   type PostComment,
   type ReportReason,
   type ReportTargetType,
+  type ProfileIdea,
   type StudentGroup,
   type StudentProfile,
 } from "./community-api";
@@ -115,6 +117,31 @@ export function initializeSocialCommunity(): void {
     "#auth-password-confirm",
   );
   const profileDialog = requiredElement<HTMLDialogElement>("#profile-dialog");
+  const profileViewDialog = requiredElement<HTMLDialogElement>(
+    "#profile-view-dialog",
+  );
+  const profileViewAvatar =
+    requiredElement<HTMLElement>("#profile-view-avatar");
+  const profileViewName = requiredElement<HTMLElement>("#profile-view-name");
+  const profileViewDepartment = requiredElement<HTMLElement>(
+    "#profile-view-department",
+  );
+  const profileViewUniversity = requiredElement<HTMLElement>(
+    "#profile-view-university",
+  );
+  const profileViewBioSection = requiredElement<HTMLElement>(
+    "#profile-view-bio-section",
+  );
+  const profileViewBio = requiredElement<HTMLElement>("#profile-view-bio");
+  const profileViewIdeas = requiredElement<HTMLElement>(
+    "#profile-view-ideas",
+  );
+  const profileViewGroups = requiredElement<HTMLElement>(
+    "#profile-view-groups",
+  );
+  const profileViewStatus = requiredElement<HTMLElement>(
+    "#profile-view-status",
+  );
   const profileForm = requiredElement<HTMLFormElement>("#profile-form");
   const profileName = requiredElement<HTMLInputElement>(
     "#profile-display-name",
@@ -296,6 +323,36 @@ export function initializeSocialCommunity(): void {
       return;
     }
     target.textContent = name.trim().slice(0, 1).toLocaleUpperCase("tr-TR") || "?";
+  }
+
+  function renderProfileIdeas(ideas: ProfileIdea[]): void {
+    if (ideas.length === 0) {
+      const empty = element("p", "profile-view__empty");
+      empty.textContent = "Henüz fikir paylaşmamış.";
+      profileViewIdeas.replaceChildren(empty);
+      return;
+    }
+
+    profileViewIdeas.replaceChildren(
+      ...ideas.map((idea) => {
+        const card = element("article", "profile-idea");
+        const meta = element("div", "profile-idea__meta");
+        const category = element("span", "profile-idea__category");
+        category.textContent = idea.is_hidden
+          ? `${idea.category} · Gizli`
+          : idea.category;
+        const date = element("time", "profile-idea__date");
+        date.dateTime = idea.created_at;
+        date.textContent = new Intl.DateTimeFormat("tr-TR", {
+          dateStyle: "medium",
+        }).format(new Date(idea.created_at));
+        meta.append(category, date);
+        const content = element("p", "profile-idea__content");
+        content.textContent = idea.content;
+        card.append(meta, content);
+        return card;
+      }),
+    );
   }
 
   function createPostCommentCard(
@@ -1025,22 +1082,73 @@ export function initializeSocialCommunity(): void {
     },
   );
 
+  function openProfileEditor(): void {
+    if (!profile) return;
+    profileStatus.textContent = "";
+    profileName.value = profile.display_name;
+    profileDepartment.value = profile.department;
+    profileUniversity.value = profile.university_name ?? "";
+    profileBio.value = profile.bio ?? "";
+    profileAvatar.value = "";
+    updateAvatarPreview(
+      profileAvatarPreview,
+      profile.display_name,
+      profile.avatar_url,
+    );
+    profileDialog.showModal();
+  }
+
   requiredElement<HTMLButtonElement>("#profile-button").addEventListener(
     "click",
-    () => {
-      if (!profile) return;
-      profileStatus.textContent = "";
-      profileName.value = profile.display_name;
-      profileDepartment.value = profile.department;
-      profileUniversity.value = profile.university_name ?? "";
-      profileBio.value = profile.bio ?? "";
-      profileAvatar.value = "";
+    async () => {
+      if (!profile || !user) return;
+      profileViewName.textContent = profile.display_name;
+      profileViewDepartment.textContent = profile.department;
+      profileViewUniversity.textContent = profile.university_name ?? "";
+      profileViewUniversity.hidden = !profile.university_name;
+      profileViewBio.textContent = profile.bio ?? "";
+      profileViewBioSection.hidden = !profile.bio;
       updateAvatarPreview(
-        profileAvatarPreview,
+        profileViewAvatar,
         profile.display_name,
         profile.avatar_url,
       );
-      profileDialog.showModal();
+      const joinedGroups = groups.filter((group) => group.joined);
+      if (joinedGroups.length === 0) {
+        const empty = element("p", "profile-view__empty");
+        empty.textContent = "Henüz bir topluluğa katılmamış.";
+        profileViewGroups.replaceChildren(empty);
+      } else {
+        profileViewGroups.replaceChildren(
+          ...joinedGroups.map((group) => {
+            const item = element("p", "profile-view__group");
+            item.textContent = group.is_hidden
+              ? `${group.name} · Gizli`
+              : group.name;
+            return item;
+          }),
+        );
+      }
+      profileViewIdeas.replaceChildren();
+      profileViewStatus.textContent = "Fikirler yükleniyor…";
+      profileViewDialog.showModal();
+      try {
+        renderProfileIdeas(await loadProfileIdeas(user.id));
+        profileViewStatus.textContent = "";
+      } catch (error) {
+        profileViewStatus.textContent = describeError(error);
+      }
+    },
+  );
+  requiredElement<HTMLButtonElement>("#profile-view-close").addEventListener(
+    "click",
+    () => profileViewDialog.close(),
+  );
+  requiredElement<HTMLButtonElement>("#profile-edit-button").addEventListener(
+    "click",
+    () => {
+      profileViewDialog.close();
+      openProfileEditor();
     },
   );
   requiredElement<HTMLButtonElement>(

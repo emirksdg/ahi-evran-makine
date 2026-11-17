@@ -325,6 +325,37 @@
       </form>
     </dialog>
 
+    <dialog class="account-dialog profile-view-dialog" id="profile-view-dialog" aria-labelledby="profile-view-name">
+      <section class="account-dialog__content profile-view">
+        <div class="course-dialog__header">
+          <p class="course-dialog__eyebrow">ÖĞRENCİ PROFİLİ</p>
+          <button class="course-dialog__close" id="profile-view-close" type="button" aria-label="Profili kapat">×</button>
+        </div>
+        <div class="profile-view__identity">
+          <div class="profile-avatar-preview profile-view__avatar" id="profile-view-avatar" aria-hidden="true">?</div>
+          <div class="profile-view__heading">
+            <h2 id="profile-view-name"></h2>
+            <p id="profile-view-department"></p>
+            <p id="profile-view-university" hidden></p>
+          </div>
+        </div>
+        <section class="profile-view__section" id="profile-view-bio-section" hidden>
+          <h3>Hakkında</h3>
+          <p class="profile-view__bio" id="profile-view-bio"></p>
+        </section>
+        <section class="profile-view__section">
+          <h3>Fikirleri</h3>
+          <div class="profile-view__list" id="profile-view-ideas"></div>
+        </section>
+        <section class="profile-view__section">
+          <h3>Katıldığı topluluklar</h3>
+          <div class="profile-view__list" id="profile-view-groups"></div>
+        </section>
+        <p class="community-status" id="profile-view-status" role="status" aria-live="polite"></p>
+        <button class="button button--primary profile-view__edit" id="profile-edit-button" type="button">Profilimi düzenle</button>
+      </section>
+    </dialog>
+
     <dialog class="account-dialog" id="profile-dialog" aria-labelledby="profile-dialog-title">
       <form id="profile-form" class="account-dialog__content">
         <div class="course-dialog__header">
