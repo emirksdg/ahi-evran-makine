@@ -1,6 +1,7 @@
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 import type { Database } from "./database.types";
+import { createMessageSearchPattern } from "./community";
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 type PostRow = Database["public"]["Tables"]["posts"]["Row"];
@@ -9,7 +10,10 @@ type GroupRow = Database["public"]["Tables"]["groups"]["Row"];
 type GroupJoinRequestRow =
   Database["public"]["Tables"]["group_join_requests"]["Row"];
 type MessageRow = Database["public"]["Tables"]["messages"]["Row"];
+type NotificationRow = Database["public"]["Tables"]["notifications"]["Row"];
+type UserBlockRow = Database["public"]["Tables"]["user_blocks"]["Row"];
 export type GroupJoinRequestStatus = GroupJoinRequestRow["status"];
+export type NotificationType = NotificationRow["type"];
 export type ReportTargetType = "post" | "comment" | "message" | "group";
 export type ReportReason =
   | "spam"
@@ -49,10 +53,21 @@ export interface StudentGroup extends GroupRow {
   joined: boolean;
   joinRequestStatus: GroupJoinRequestStatus | null;
   pendingJoinRequestCount: number;
+  ownerName: string;
+  memberCount: number;
+  lastMessageAt: string | null;
+  lastMessagePreview: string | null;
 }
 
 export interface GroupJoinRequest extends GroupJoinRequestRow {
   requester: Pick<ProfileRow, "id" | "display_name" | "department">;
+}
+
+export type UserNotification = NotificationRow;
+
+export interface BlockedUser
+  extends Pick<ProfileRow, "id" | "display_name" | "department"> {
+  blockedAt: UserBlockRow["created_at"];
 }
 
 export interface GroupMessage extends MessageRow {
@@ -488,8 +503,15 @@ export async function loadGroups(userId: string): Promise<StudentGroup[]> {
   if (groupsResult.error) throw new Error(groupsResult.error.message);
   if (membershipsResult.error) throw new Error(membershipsResult.error.message);
   if (requestsResult.error) throw new Error(requestsResult.error.message);
+  const summariesResult = await db.rpc("get_group_summaries", {
+    target_group_ids: groupsResult.data.map((group) => group.id),
+  });
+  if (summariesResult.error) throw new Error(summariesResult.error.message);
   const joinedIds = new Set(
     membershipsResult.data.map((membership) => membership.group_id),
+  );
+  const summariesById = new Map(
+    summariesResult.data.map((summary) => [summary.group_id, summary]),
   );
   const ownRequestStatus = new Map(
     requestsResult.data
@@ -504,12 +526,22 @@ export async function loadGroups(userId: string): Promise<StudentGroup[]> {
       (pendingRequestCounts.get(request.group_id) ?? 0) + 1,
     );
   }
-  return groupsResult.data.map((group) => ({
-    ...group,
-    joined: joinedIds.has(group.id),
-    joinRequestStatus: ownRequestStatus.get(group.id) ?? null,
-    pendingJoinRequestCount: pendingRequestCounts.get(group.id) ?? 0,
-  }));
+  return groupsResult.data.map((group) => {
+    const summary = summariesById.get(group.id);
+    if (!summary) {
+      throw new Error("Bir topluluk bilgisi yüklenemedi. Listeyi yenile.");
+    }
+    return {
+      ...group,
+      joined: joinedIds.has(group.id),
+      joinRequestStatus: ownRequestStatus.get(group.id) ?? null,
+      pendingJoinRequestCount: pendingRequestCounts.get(group.id) ?? 0,
+      ownerName: summary.owner_name,
+      memberCount: summary.member_count,
+      lastMessageAt: summary.last_message_at,
+      lastMessagePreview: summary.last_message_preview,
+    };
+  });
 }
 
 export async function createGroup(input: {
@@ -587,14 +619,134 @@ export async function reviewGroupJoinRequest(input: {
   throwIfError(error);
 }
 
-export async function loadMessages(groupId: string): Promise<GroupMessage[]> {
+export async function loadNotifications(
+  userId: string,
+): Promise<UserNotification[]> {
+  const { data, error } = await client()
+    .from("notifications")
+    .select("*")
+    .eq("recipient_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function loadUnreadNotificationCount(
+  userId: string,
+): Promise<number> {
+  const { count, error } = await client()
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("recipient_id", userId)
+    .is("read_at", null);
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
+export async function markNotificationRead(
+  notificationId: string,
+  userId: string,
+): Promise<void> {
+  const { error } = await client()
+    .from("notifications")
+    .update({ read_at: new Date().toISOString() })
+    .eq("id", notificationId)
+    .eq("recipient_id", userId);
+  throwIfError(error);
+}
+
+export async function markAllNotificationsRead(
+  userId: string,
+): Promise<void> {
+  const { error } = await client()
+    .from("notifications")
+    .update({ read_at: new Date().toISOString() })
+    .eq("recipient_id", userId)
+    .is("read_at", null);
+  throwIfError(error);
+}
+
+export function watchNotifications(
+  userId: string,
+  onChange: () => void,
+): () => void {
   const db = client();
-  const { data: messages, error } = await db
+  const channel = db
+    .channel(`notifications:${userId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "notifications",
+        filter: `recipient_id=eq.${userId}`,
+      },
+      onChange,
+    )
+    .subscribe();
+  return () => {
+    void db.removeChannel(channel);
+  };
+}
+
+export async function loadBlockedUsers(
+  userId: string,
+): Promise<BlockedUser[]> {
+  const db = client();
+  const { data: blocks, error } = await db
+    .from("user_blocks")
+    .select("blocked_id, created_at")
+    .eq("blocker_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  if (blocks.length === 0) return [];
+
+  const ids = blocks.map((block) => block.blocked_id);
+  const { data: profiles, error: profileError } = await db
+    .from("profiles")
+    .select("id, display_name, department")
+    .in("id", ids);
+  if (profileError) throw new Error(profileError.message);
+  const profilesById = new Map(profiles.map((profile) => [profile.id, profile]));
+  return blocks.flatMap((block) => {
+    const profile = profilesById.get(block.blocked_id);
+    return profile ? [{ ...profile, blockedAt: block.created_at }] : [];
+  });
+}
+
+export async function blockUser(targetUserId: string): Promise<void> {
+  const { error } = await client().rpc("block_user", {
+    target_user_id: targetUserId,
+  });
+  throwIfError(error);
+}
+
+export async function unblockUser(targetUserId: string): Promise<void> {
+  const { error } = await client().rpc("unblock_user", {
+    target_user_id: targetUserId,
+  });
+  throwIfError(error);
+}
+
+export async function loadMessages(
+  groupId: string,
+  searchQuery = "",
+): Promise<GroupMessage[]> {
+  const db = client();
+  const pattern = createMessageSearchPattern(searchQuery);
+  const messageQuery = db
     .from("messages")
     .select("*")
-    .eq("group_id", groupId)
-    .order("created_at", { ascending: false })
-    .limit(100);
+    .eq("group_id", groupId);
+  const { data: messages, error } = pattern
+    ? await messageQuery
+        .ilike("content", pattern)
+        .order("created_at", { ascending: false })
+        .limit(100)
+    : await messageQuery
+        .order("created_at", { ascending: false })
+        .limit(100);
   if (error) throw new Error(error.message);
   const orderedMessages = [...messages].reverse();
   if (orderedMessages.length === 0) return [];

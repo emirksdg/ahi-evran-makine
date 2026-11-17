@@ -3,6 +3,7 @@ import {
   parseGroups,
   parsePosts,
   filterGroups,
+  createMessageSearchPattern,
   validateGroup,
   validateCommentContent,
   validatePostContent,
@@ -71,6 +72,16 @@ describe("filterGroups", () => {
 
   it("returns all groups for an empty query", () => {
     expect(filterGroups(groups, "  ")).toEqual(groups);
+  });
+});
+
+describe("createMessageSearchPattern", () => {
+  it("treats SQL wildcard characters as literal search text", () => {
+    expect(createMessageSearchPattern("  fikir_%  ")).toBe("%fikir\\_\\%%");
+  });
+
+  it("returns null for an empty search", () => {
+    expect(createMessageSearchPattern("  ")).toBeNull();
   });
 });
 

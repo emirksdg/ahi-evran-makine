@@ -29,6 +29,12 @@ export function filterGroups<T extends StudentGroup>(
   );
 }
 
+export function createMessageSearchPattern(query: string): string | null {
+  const normalizedQuery = query.trim();
+  if (!normalizedQuery) return null;
+  return `%${normalizedQuery.replace(/[\\%_]/g, "\\$&")}%`;
+}
+
 export const maxPostLength = 500;
 export const maxCommentLength = 2000;
 export const maxGroupNameLength = 48;

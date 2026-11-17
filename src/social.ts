@@ -1,5 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 import {
+  blockUser,
   createPostComment,
   createGroup,
   createPost,
@@ -9,9 +10,12 @@ import {
   deletePostComment,
   isModerator,
   loadContentReports,
+  loadBlockedUsers,
   loadGroupJoinRequests,
   loadGroups,
   loadMessages,
+  loadNotifications,
+  loadUnreadNotificationCount,
   loadPosts,
   loadProfileIdeas,
   loadSiteFeedback,
@@ -19,6 +23,8 @@ import {
   loadProfile,
   moderateContentReport,
   markSiteFeedbackReviewed,
+  markAllNotificationsRead,
+  markNotificationRead,
   registerWithEmail,
   requestGroupJoin,
   reviewGroupJoinRequest,
@@ -29,15 +35,18 @@ import {
   submitContentReport,
   submitSiteFeedback,
   togglePostLike,
+  unblockUser,
   updatePassword,
   updateProfile,
   watchCommunity,
   watchGroupMessages,
+  watchNotifications,
   type FeedPost,
   type ContentReport,
   type FeedbackCategory,
   type GroupJoinRequest,
   type GroupMessage,
+  type UserNotification,
   type PostComment,
   type ReportReason,
   type ReportTargetType,
@@ -176,6 +185,33 @@ export function initializeSocialCommunity(): void {
   const signedInControls =
     requiredElement<HTMLElement>("#signed-in-controls");
   const signedInName = requiredElement<HTMLElement>("#signed-in-name");
+  const notificationsButton = requiredElement<HTMLButtonElement>(
+    "#notifications-button",
+  );
+  const notificationsUnreadCount = requiredElement<HTMLElement>(
+    "#notifications-unread-count",
+  );
+  const notificationsDialog = requiredElement<HTMLDialogElement>(
+    "#notifications-dialog",
+  );
+  const notificationsStatus =
+    requiredElement<HTMLElement>("#notifications-status");
+  const notificationsList =
+    requiredElement<HTMLElement>("#notifications-list");
+  const notificationsMarkAll = requiredElement<HTMLButtonElement>(
+    "#notifications-mark-all",
+  );
+  const blockedUsersDialog = requiredElement<HTMLDialogElement>(
+    "#blocked-users-dialog",
+  );
+  const blockedUsersButton = requiredElement<HTMLButtonElement>(
+    "#blocked-users-button",
+  );
+  const blockedUsersStatus =
+    requiredElement<HTMLElement>("#blocked-users-status");
+  const blockedUsersList = requiredElement<HTMLElement>(
+    "#blocked-users-list",
+  );
   const loginButton = requiredElement<HTMLButtonElement>("#login-button");
   const communityMessage = requiredElement<HTMLElement>(
     "#community-account-message",
@@ -222,6 +258,8 @@ export function initializeSocialCommunity(): void {
     requiredElement<HTMLFormElement>("#group-chat-form");
   const groupChatInput =
     requiredElement<HTMLTextAreaElement>("#group-chat-input");
+  const groupChatSearchInput =
+    requiredElement<HTMLInputElement>("#group-chat-search");
   const reportDialog = requiredElement<HTMLDialogElement>("#report-dialog");
   const reportForm = requiredElement<HTMLFormElement>("#report-form");
   const reportReason = requiredElement<HTMLSelectElement>("#report-reason");
@@ -280,6 +318,8 @@ export function initializeSocialCommunity(): void {
   let profile: StudentProfile | null = null;
   let posts: FeedPost[] = [];
   let groups: StudentGroup[] = [];
+  let notifications: UserNotification[] = [];
+  let unreadNotificationCount = 0;
   let activeFilter = "Tümü";
   let activeChatGroup: StudentGroup | null = null;
   let activeJoinRequestGroup: StudentGroup | null = null;
@@ -290,6 +330,9 @@ export function initializeSocialCommunity(): void {
   } | null = null;
   let stopCommunityWatch: (() => void) | null = null;
   let stopMessageWatch: (() => void) | null = null;
+  let stopNotificationWatch: (() => void) | null = null;
+  let messageSearchTimer: number | null = null;
+  let messageSearchVersion = 0;
   let initializedAuthState = false;
 
   const setStatus = (message: string) => {
@@ -321,6 +364,45 @@ export function initializeSocialCommunity(): void {
       reportStatus.textContent = "";
       reportDialog.showModal();
       reportReason.focus();
+    });
+    return button;
+  }
+
+  function createBlockButton(
+    targetUserId: string,
+    targetName: string,
+    status: HTMLElement,
+    onBlocked: () => Promise<void>,
+  ): HTMLButtonElement {
+    const button = element("button", "content-block-button");
+    button.type = "button";
+    button.textContent = "Engelle";
+    button.setAttribute("aria-label", `${targetName} kullanıcısını engelle`);
+    button.addEventListener("click", async () => {
+      if (
+        !user ||
+        !window.confirm(
+          `${targetName} kullanıcısını engellemek istiyor musun? Bu kişinin içerikleri senden gizlenir.`,
+        )
+      ) {
+        return;
+      }
+      button.disabled = true;
+      status.textContent = "";
+      try {
+        await blockUser(targetUserId);
+        status.textContent = `${targetName} engellendi.`;
+        try {
+          await onBlocked();
+        } catch (error) {
+          status.textContent =
+            `${targetName} engellendi, ancak içerik yenilenemedi: ${describeError(error)}`;
+        }
+      } catch (error) {
+        status.textContent = describeError(error);
+      } finally {
+        button.disabled = false;
+      }
     });
     return button;
   }
@@ -471,12 +553,24 @@ export function initializeSocialCommunity(): void {
       card.append(deleteButton);
     } else if (user) {
       card.append(createReportButton("comment", comment.id));
+      card.append(
+        createBlockButton(
+          comment.author.id,
+          comment.author.display_name,
+          status,
+          async () => {
+            await onDeleted();
+            await refreshPosts();
+          },
+        ),
+      );
     }
     return card;
   }
 
   function createPostCard(post: FeedPost): HTMLElement {
     const card = element("article", "feed-card");
+    card.dataset.postId = post.id;
     const header = element("div", "feed-card__header");
     const avatar = element("span", "avatar");
     if (post.author.avatar_url) {
@@ -660,6 +754,14 @@ export function initializeSocialCommunity(): void {
       footer.append(deleteButton);
     } else if (user) {
       footer.append(createReportButton("post", post.id));
+      footer.append(
+        createBlockButton(
+          post.author.id,
+          post.author.display_name,
+          communityStatus,
+          refreshPosts,
+        ),
+      );
     }
     card.append(header, body, footer, commentsPanel);
     return card;
@@ -712,7 +814,21 @@ export function initializeSocialCommunity(): void {
     name.textContent = group.is_hidden ? `${group.name} · Gizli` : group.name;
     const description = element("p", "group-card__description");
     description.textContent = group.description || "Öğrenci topluluğu.";
-    copy.append(name, description);
+    const details = element("p", "group-card__details");
+    details.textContent =
+      `Sahibi: ${group.ownerName} · ${group.memberCount} üye`;
+    const lastMessage = element("p", "group-card__last-message");
+    if (group.lastMessagePreview) {
+      lastMessage.textContent = `Son mesaj: ${group.lastMessagePreview}`;
+    } else if (group.lastMessageAt) {
+      lastMessage.textContent = `Son etkinlik: ${new Intl.DateTimeFormat(
+        "tr-TR",
+        { dateStyle: "short", timeStyle: "short" },
+      ).format(new Date(group.lastMessageAt))}`;
+    } else {
+      lastMessage.textContent = "Henüz sohbet mesajı yok.";
+    }
+    copy.append(name, description, details, lastMessage);
     const actions = element("div", "group-card__actions");
     const action = element("button", "group-action");
     action.type = "button";
@@ -902,6 +1018,181 @@ export function initializeSocialCommunity(): void {
 
   groupSearchInput.addEventListener("input", renderGroups);
 
+  function renderNotifications(): void {
+    const unreadCount = unreadNotificationCount;
+    notificationsUnreadCount.hidden = unreadCount === 0;
+    notificationsUnreadCount.textContent =
+      unreadCount > 99 ? "99+" : String(unreadCount);
+    notificationsButton.setAttribute(
+      "aria-label",
+      unreadCount > 0
+        ? `Bildirimler, ${unreadCount} okunmamış`
+        : "Bildirimler",
+    );
+    notificationsMarkAll.disabled = unreadCount === 0;
+
+    if (notifications.length === 0) {
+      const empty = element("p", "profile-view__empty");
+      empty.textContent = "Henüz bildirimin yok.";
+      notificationsList.replaceChildren(empty);
+      return;
+    }
+
+    notificationsList.replaceChildren(
+      ...notifications.map((notification) => {
+        const button = element("button", "notification-item");
+        button.type = "button";
+        button.classList.toggle(
+          "notification-item--unread",
+          notification.read_at === null,
+        );
+        const title = element("span", "notification-item__title");
+        title.textContent = notification.title;
+        const body = element("span", "notification-item__body");
+        body.textContent = notification.body;
+        const time = element("time", "notification-item__time");
+        time.dateTime = notification.created_at;
+        time.textContent = new Intl.DateTimeFormat("tr-TR", {
+          dateStyle: "medium",
+          timeStyle: "short",
+        }).format(new Date(notification.created_at));
+        button.append(title, body, time);
+        button.addEventListener("click", () => {
+          void openNotification(notification);
+        });
+        return button;
+      }),
+    );
+  }
+
+  async function refreshNotifications(): Promise<void> {
+    if (!user) return;
+    const [loadedNotifications, unreadCount] = await Promise.all([
+      loadNotifications(user.id),
+      loadUnreadNotificationCount(user.id),
+    ]);
+    notifications = loadedNotifications;
+    unreadNotificationCount = unreadCount;
+    renderNotifications();
+  }
+
+  async function openNotification(
+    notification: UserNotification,
+  ): Promise<void> {
+    if (!user) return;
+    notificationsStatus.textContent = "";
+    if (notification.read_at === null) {
+      try {
+        await markNotificationRead(notification.id, user.id);
+        notification.read_at = new Date().toISOString();
+        unreadNotificationCount = Math.max(0, unreadNotificationCount - 1);
+        renderNotifications();
+      } catch (error) {
+        notificationsStatus.textContent = describeError(error);
+        return;
+      }
+    }
+    notificationsDialog.close();
+
+    if (notification.group_id) {
+      try {
+        await refreshGroups();
+      } catch (error) {
+        setStatus(describeError(error));
+        return;
+      }
+      const group = groups.find(
+        (candidate) => candidate.id === notification.group_id,
+      );
+      if (!group) return;
+      if (
+        notification.type === "group_join_request" &&
+        group.owner_id === user.id
+      ) {
+        await openGroupJoinRequests(group);
+      } else if (group.joined) {
+        await openGroupChat(group);
+      }
+      return;
+    }
+
+    if (notification.post_id) {
+      const postCard = [...document.querySelectorAll<HTMLElement>(".feed-card")]
+        .find((card) => card.dataset.postId === notification.post_id);
+      if (postCard) {
+        document.querySelector("#topluluk")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+        postCard.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  }
+
+  async function refreshBlockedUsers(): Promise<void> {
+    if (!user) return;
+    blockedUsersStatus.textContent = "Engellenenler yükleniyor…";
+    const blockedUsers = await loadBlockedUsers(user.id);
+    if (blockedUsers.length === 0) {
+      const empty = element("p", "profile-view__empty");
+      empty.textContent = "Henüz engellediğin biri yok.";
+      blockedUsersList.replaceChildren(empty);
+    } else {
+      blockedUsersList.replaceChildren(
+        ...blockedUsers.map((blockedUser) => {
+          const item = element("article", "blocked-user-item");
+          const copy = element("div", "blocked-user-item__copy");
+          const name = element("span", "blocked-user-item__name");
+          name.textContent = blockedUser.display_name;
+          const department = element("span", "blocked-user-item__department");
+          department.textContent = blockedUser.department;
+          copy.append(name, department);
+          const unblockButton = element(
+            "button",
+            "blocked-user-item__unblock",
+          );
+          unblockButton.type = "button";
+          unblockButton.textContent = "Engeli kaldır";
+          unblockButton.addEventListener("click", async () => {
+            if (!user) return;
+            unblockButton.disabled = true;
+            blockedUsersStatus.textContent = "";
+            try {
+              await unblockUser(blockedUser.id);
+              await refreshBlockedUsers();
+              try {
+                await Promise.all([refreshPosts(), refreshGroups()]);
+                if (activeChatGroup) {
+                  await refreshMessages(activeChatGroup.id);
+                }
+                blockedUsersStatus.textContent = "Engel kaldırıldı.";
+              } catch (error) {
+                blockedUsersStatus.textContent =
+                  `Engel kaldırıldı ancak içerikler yenilenemedi: ${describeError(error)}`;
+              }
+            } catch (error) {
+              blockedUsersStatus.textContent = describeError(error);
+            } finally {
+              unblockButton.disabled = false;
+            }
+          });
+          item.append(copy, unblockButton);
+          return item;
+        }),
+      );
+    }
+    blockedUsersStatus.textContent = "";
+  }
+
+  async function openBlockedUsers(): Promise<void> {
+    blockedUsersDialog.showModal();
+    try {
+      await refreshBlockedUsers();
+    } catch (error) {
+      blockedUsersStatus.textContent = describeError(error);
+    }
+  }
+
   function createMessageCard(message: GroupMessage): HTMLElement {
     const ownMessage = message.author.id === user?.id;
     const card = element(
@@ -946,24 +1237,52 @@ export function initializeSocialCommunity(): void {
       card.append(deleteButton);
     } else if (user) {
       card.append(createReportButton("message", message.id));
+      card.append(
+        createBlockButton(
+          message.author.id,
+          message.author.display_name,
+          groupChatStatus,
+          async () => {
+            if (activeChatGroup) await refreshMessages(activeChatGroup.id);
+          },
+        ),
+      );
     }
     return card;
   }
 
-  async function refreshMessages(groupId: string): Promise<void> {
-    const messages = await loadMessages(groupId);
-    if (activeChatGroup?.id !== groupId) return;
+  async function refreshMessages(
+    groupId: string,
+    clearSearchStatus = false,
+  ): Promise<void> {
+    const requestVersion = ++messageSearchVersion;
+    const messages = await loadMessages(groupId, groupChatSearchInput.value);
+    if (
+      activeChatGroup?.id !== groupId ||
+      requestVersion !== messageSearchVersion
+    ) {
+      return;
+    }
     groupChatMessages.replaceChildren(...messages.map(createMessageCard));
     if (messages.length === 0) {
       const empty = element("p", "group-chat__empty");
-      empty.textContent = "Sohbeti başlatan ilk mesajı sen yaz.";
+      empty.textContent = groupChatSearchInput.value.trim()
+        ? "Aramana uygun mesaj bulunamadı."
+        : "Sohbeti başlatan ilk mesajı sen yaz.";
       groupChatMessages.append(empty);
     }
     groupChatMessages.scrollTop = groupChatMessages.scrollHeight;
+    if (clearSearchStatus) groupChatStatus.textContent = "";
   }
 
   async function openGroupChat(group: StudentGroup): Promise<void> {
     if (stopMessageWatch) stopMessageWatch();
+    if (messageSearchTimer !== null) {
+      window.clearTimeout(messageSearchTimer);
+      messageSearchTimer = null;
+    }
+    messageSearchVersion += 1;
+    groupChatSearchInput.value = "";
     activeChatGroup = group;
     groupChatTitle.textContent = group.name;
     groupChatId.textContent = group.id;
@@ -1170,11 +1489,15 @@ export function initializeSocialCommunity(): void {
     initializedAuthState = true;
     if (stopCommunityWatch) stopCommunityWatch();
     if (stopMessageWatch) stopMessageWatch();
+    if (stopNotificationWatch) stopNotificationWatch();
     stopCommunityWatch = null;
     stopMessageWatch = null;
+    stopNotificationWatch = null;
     activeChatGroup = null;
     activeJoinRequestGroup = null;
     if (groupRequestsDialog.open) groupRequestsDialog.close();
+    if (notificationsDialog.open) notificationsDialog.close();
+    if (blockedUsersDialog.open) blockedUsersDialog.close();
     moderator = false;
     moderationQueueButton.hidden = true;
     siteFeedbackQueueButton.hidden = true;
@@ -1182,6 +1505,9 @@ export function initializeSocialCommunity(): void {
     profile = null;
     posts = [];
     groups = [];
+    notifications = [];
+    unreadNotificationCount = 0;
+    renderNotifications();
     groupList.replaceChildren();
     communityFeed.replaceChildren();
     signedInControls.hidden = !nextUser;
@@ -1213,7 +1539,17 @@ export function initializeSocialCommunity(): void {
         profile.avatar_url,
       );
       const moderatorCheck = isModerator();
-      await Promise.all([refreshPosts(), refreshGroups()]);
+      stopNotificationWatch = watchNotifications(nextUser.id, () => {
+        void refreshNotifications().catch(
+          (error: unknown) =>
+            (notificationsStatus.textContent = describeError(error)),
+        );
+      });
+      await Promise.all([
+        refreshPosts(),
+        refreshGroups(),
+        refreshNotifications(),
+      ]);
       try {
         moderator = await moderatorCheck;
       } catch (error) {
@@ -1615,9 +1951,29 @@ export function initializeSocialCommunity(): void {
       if (stopMessageWatch) stopMessageWatch();
       stopMessageWatch = null;
       activeChatGroup = null;
+      messageSearchVersion += 1;
+      if (messageSearchTimer !== null) {
+        window.clearTimeout(messageSearchTimer);
+        messageSearchTimer = null;
+      }
       groupChatDialog.close();
     },
   );
+  groupChatSearchInput.addEventListener("input", () => {
+    if (!activeChatGroup) return;
+    if (messageSearchTimer !== null) {
+      window.clearTimeout(messageSearchTimer);
+    }
+    const groupId = activeChatGroup.id;
+    messageSearchTimer = window.setTimeout(() => {
+      groupChatStatus.textContent = "Mesajlar aranıyor…";
+      void refreshMessages(groupId, true).catch((error: unknown) => {
+        if (activeChatGroup?.id === groupId) {
+          groupChatStatus.textContent = describeError(error);
+        }
+      });
+    }, 250);
+  });
   groupChatCopyId.addEventListener("click", async () => {
     if (!activeChatGroup) return;
     try {
@@ -1745,6 +2101,50 @@ export function initializeSocialCommunity(): void {
       siteFeedbackQueueStatus.textContent = describeError(error);
     }
   });
+  requiredElement<HTMLButtonElement>("#notifications-close").addEventListener(
+    "click",
+    () => notificationsDialog.close(),
+  );
+  notificationsDialog.addEventListener("close", () => {
+    notificationsStatus.textContent = "";
+  });
+  notificationsButton.addEventListener("click", async () => {
+    notificationsStatus.textContent = "";
+    notificationsDialog.showModal();
+    try {
+      await refreshNotifications();
+    } catch (error) {
+      notificationsStatus.textContent = describeError(error);
+    }
+  });
+  notificationsMarkAll.addEventListener("click", async () => {
+    if (!user) return;
+    notificationsMarkAll.disabled = true;
+    notificationsStatus.textContent = "";
+    try {
+      await markAllNotificationsRead(user.id);
+      const readAt = new Date().toISOString();
+      notifications = notifications.map((notification) => ({
+        ...notification,
+        read_at: notification.read_at ?? readAt,
+      }));
+      unreadNotificationCount = 0;
+      renderNotifications();
+    } catch (error) {
+      notificationsStatus.textContent = describeError(error);
+      notificationsMarkAll.disabled = false;
+    }
+  });
+  requiredElement<HTMLButtonElement>("#blocked-users-close").addEventListener(
+    "click",
+    () => blockedUsersDialog.close(),
+  );
+  blockedUsersButton.addEventListener("click", () => {
+    void openBlockedUsers();
+  });
+  blockedUsersDialog.addEventListener("close", () => {
+    blockedUsersStatus.textContent = "";
+  });
 
   const { data: authListener } = supabase.auth.onAuthStateChange(
     (event, session) => {
@@ -1768,5 +2168,6 @@ export function initializeSocialCommunity(): void {
     authListener.subscription.unsubscribe();
     if (stopCommunityWatch) stopCommunityWatch();
     if (stopMessageWatch) stopMessageWatch();
+    if (stopNotificationWatch) stopNotificationWatch();
   });
 }

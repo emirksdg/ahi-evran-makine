@@ -233,6 +233,56 @@ export interface Database {
         Update: never;
         Relationships: [];
       };
+      notifications: {
+        Row: {
+          id: string;
+          recipient_id: string;
+          actor_id: string | null;
+          type:
+            | "group_join_request"
+            | "group_join_approved"
+            | "group_join_rejected"
+            | "group_message"
+            | "post_comment"
+            | "post_like";
+          title: string;
+          body: string;
+          group_id: string | null;
+          post_id: string | null;
+          created_at: string;
+          read_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          recipient_id: string;
+          actor_id?: string | null;
+          type:
+            | "group_join_request"
+            | "group_join_approved"
+            | "group_join_rejected"
+            | "group_message"
+            | "post_comment"
+            | "post_like";
+          title: string;
+          body?: string;
+          group_id?: string | null;
+          post_id?: string | null;
+          created_at?: string;
+          read_at?: string | null;
+        };
+        Update: { read_at?: string | null };
+        Relationships: [];
+      };
+      user_blocks: {
+        Row: { blocker_id: string; blocked_id: string; created_at: string };
+        Insert: {
+          blocker_id: string;
+          blocked_id: string;
+          created_at?: string;
+        };
+        Update: never;
+        Relationships: [];
+      };
       messages: {
         Row: {
           id: string;
@@ -371,6 +421,36 @@ export interface Database {
           approve: boolean;
         };
         Returns: undefined;
+      };
+      is_user_blocked: {
+        Args: {
+          target_user_id: string;
+        };
+        Returns: boolean;
+      };
+      block_user: {
+        Args: {
+          target_user_id: string;
+        };
+        Returns: undefined;
+      };
+      unblock_user: {
+        Args: {
+          target_user_id: string;
+        };
+        Returns: undefined;
+      };
+      get_group_summaries: {
+        Args: {
+          target_group_ids: string[];
+        };
+        Returns: {
+          group_id: string;
+          owner_name: string;
+          member_count: number;
+          last_message_at: string | null;
+          last_message_preview: string | null;
+        }[];
       };
     };
     Enums: Record<string, never>;

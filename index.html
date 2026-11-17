@@ -80,6 +80,10 @@
         </button>
         <div class="signed-in-controls" id="signed-in-controls" hidden>
           <span class="signed-in-name" id="signed-in-name"></span>
+          <button class="header-link notifications-button" id="notifications-button" type="button" aria-label="Bildirimler">
+            Bildirimler <span id="notifications-unread-count" class="notifications-unread-count" hidden></span>
+          </button>
+          <button class="header-link" id="blocked-users-button" type="button">Engellenenler</button>
           <button class="header-link" id="profile-button" type="button">Profilim</button>
           <button class="header-link" id="sign-out-button" type="button">Çıkış</button>
         </div>
@@ -464,12 +468,64 @@
           </div>
         </div>
         <p id="group-chat-status" class="community-status" role="status" aria-live="polite"></p>
+        <label class="sr-only" for="group-chat-search">Bu sohbette mesaj ara</label>
+        <input
+          class="group-chat__search"
+          id="group-chat-search"
+          type="search"
+          maxlength="100"
+          autocomplete="off"
+          placeholder="Bu sohbette mesaj ara"
+        />
         <div class="group-chat__messages" id="group-chat-messages" aria-live="polite"></div>
         <form class="group-chat__form" id="group-chat-form">
           <label class="sr-only" for="group-chat-input">Mesaj yaz</label>
           <textarea id="group-chat-input" maxlength="2000" rows="2" required placeholder="Mesajını yaz…"></textarea>
           <button class="button button--primary" type="submit">Gönder</button>
         </form>
+      </div>
+    </dialog>
+
+    <dialog class="notifications-dialog" id="notifications-dialog" aria-labelledby="notifications-title">
+      <div class="notifications-dialog__content">
+        <div class="course-dialog__header">
+          <p class="course-dialog__eyebrow">HABERLER</p>
+          <button class="course-dialog__close" id="notifications-close" type="button" aria-label="Bildirimleri kapat">×</button>
+        </div>
+        <div class="notifications-dialog__heading">
+          <h2 id="notifications-title">Bildirimler</h2>
+          <button id="notifications-mark-all" class="header-link" type="button">Tümünü okundu işaretle</button>
+        </div>
+        <p id="notifications-status" class="community-status" role="status" aria-live="polite"></p>
+        <div id="notifications-list" class="notifications-list"></div>
+      </div>
+    </dialog>
+
+    <dialog class="group-dialog" id="blocked-users-dialog" aria-labelledby="blocked-users-title">
+      <div class="group-dialog__content">
+        <div class="course-dialog__header">
+          <p class="course-dialog__eyebrow">GÜVENLİK</p>
+          <button class="course-dialog__close" id="blocked-users-close" type="button" aria-label="Engellenenleri kapat">×</button>
+        </div>
+        <h2 id="blocked-users-title">Engellenen kullanıcılar</h2>
+        <p id="blocked-users-status" class="community-status" role="status" aria-live="polite"></p>
+        <div id="blocked-users-list" class="blocked-users-list"></div>
+      </div>
+    </dialog>
+
+    <dialog class="group-dialog onboarding-dialog" id="onboarding-dialog" aria-labelledby="onboarding-title">
+      <div class="group-dialog__content">
+        <div class="course-dialog__header">
+          <p class="course-dialog__eyebrow">FİKİR FONKSİYONU</p>
+          <button class="course-dialog__close" id="onboarding-close" type="button" aria-label="Tanıtımı kapat">×</button>
+        </div>
+        <h2 id="onboarding-title">Burada nasıl başlayabilirsin?</h2>
+        <ol class="onboarding-steps">
+          <li><strong>Fikrini paylaş.</strong> Kısa bir öneri yaz, diğer öğrenciler yorum ve beğeniyle katkı sunsun.</li>
+          <li><strong>Topluluğunu bul.</strong> İsim veya sohbet ID’siyle ara; katılma isteğin onaylanınca sohbete gir.</li>
+          <li><strong>Güvende kal.</strong> Uygunsuz içeriği şikâyet et, istemediğin kullanıcıları engelle.</li>
+        </ol>
+        <button id="onboarding-dismiss" class="button button--primary" type="button">Anladım, başlayalım</button>
       </div>
     </dialog>
 

@@ -2161,6 +2161,18 @@ html[data-theme="dark"] .theme-toggle__icon--sun {
   font-size: 0.65rem;
 }
 
+.group-chat__search {
+  width: 100%;
+  margin: 0.45rem 0 0.25rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--ink);
+  background: var(--paper);
+  font: inherit;
+  font-size: 0.72rem;
+}
+
 .group-chat__messages {
   display: flex;
   min-height: 100px;
@@ -2332,6 +2344,149 @@ html[data-theme="dark"] .theme-toggle__icon--sun {
   border: 0;
   background: transparent;
   cursor: pointer;
+}
+
+.notifications-button {
+  position: relative;
+}
+
+.notifications-unread-count {
+  display: inline-grid;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  place-items: center;
+  margin-left: 0.2rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  color: #fff;
+  background: #454545;
+  font-size: 0.58rem;
+  font-weight: 800;
+}
+
+.notifications-dialog {
+  width: min(520px, calc(100vw - 1.5rem));
+  max-height: min(700px, calc(100dvh - 2rem));
+  padding: 0;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  color: var(--ink);
+  background: var(--paper);
+  box-shadow: 0 28px 90px rgb(21 21 21 / 28%);
+}
+
+.notifications-dialog::backdrop {
+  background: rgb(20 20 20 / 55%);
+  backdrop-filter: blur(3px);
+}
+
+.notifications-dialog__content {
+  padding: 1.25rem;
+}
+
+.notifications-dialog__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.notifications-dialog__heading h2 {
+  margin: 0.6rem 0;
+  font-family: var(--heading);
+  font-size: 1.35rem;
+}
+
+.notifications-list,
+.blocked-users-list {
+  display: grid;
+  max-height: 55vh;
+  gap: 0.55rem;
+  overflow-y: auto;
+}
+
+.notification-item,
+.blocked-user-item {
+  display: grid;
+  width: 100%;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  background: var(--paper-strong);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.notification-item--unread {
+  border-color: var(--sage-strong);
+  box-shadow: inset 3px 0 var(--accent);
+}
+
+.notification-item__title,
+.blocked-user-item__name {
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.notification-item__body,
+.blocked-user-item__department {
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+
+.notification-item__time {
+  color: var(--muted);
+  font-size: 0.6rem;
+}
+
+.blocked-user-item {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  cursor: default;
+}
+
+.blocked-user-item__copy {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.blocked-user-item__unblock {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--ink);
+  background: var(--paper);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.group-dialog.onboarding-dialog {
+  width: min(560px, calc(100vw - 1.5rem));
+}
+
+.onboarding-steps {
+  display: grid;
+  gap: 0.7rem;
+  padding-left: 1.3rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.onboarding-steps strong {
+  color: var(--ink);
+}
+
+.onboarding-dialog .button {
+  justify-self: start;
+  margin-top: 0.6rem;
 }
 
 .community-section {
@@ -2843,6 +2998,22 @@ html[data-theme="dark"] .theme-toggle__icon--sun {
   line-height: 1.5;
 }
 
+.group-card__details {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  font-size: 0.6rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.group-card__last-message {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.6rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .community-aside__footer {
   display: flex;
   align-items: flex-start;
@@ -2978,6 +3149,23 @@ html[data-theme="dark"] .theme-toggle__icon--sun {
 .content-report-button:hover {
   color: #4b4b4b;
   background: #eeeeee;
+}
+
+.content-block-button {
+  padding: 0.2rem 0.35rem;
+  border: 0;
+  border-radius: 5px;
+  color: #636363;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+.content-block-button:hover {
+  color: #343434;
+  background: #e8e8e8;
 }
 
 .moderation-dialog {
@@ -3628,6 +3816,15 @@ html[data-theme="dark"] .content-report-button {
 
 html[data-theme="dark"] .content-report-button:hover {
   color: #c0c7d6;
+  background: #2a2f38;
+}
+
+html[data-theme="dark"] .content-block-button {
+  color: #aab1be;
+}
+
+html[data-theme="dark"] .content-block-button:hover {
+  color: #e1e4e9;
   background: #2a2f38;
 }
 

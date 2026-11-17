@@ -423,3 +423,34 @@ requiredElement<HTMLButtonElement>("#login-button").addEventListener(
 
 const footerYear = document.querySelector<HTMLElement>("#current-year");
 if (footerYear) footerYear.textContent = String(new Date().getFullYear());
+
+const onboardingDialog = requiredElement<HTMLDialogElement>(
+  "#onboarding-dialog",
+);
+const onboardingStorageKey = "fikirfonksiyonu-onboarding-seen";
+requiredElement<HTMLButtonElement>("#onboarding-close").addEventListener(
+  "click",
+  () => onboardingDialog.close(),
+);
+requiredElement<HTMLButtonElement>("#onboarding-dismiss").addEventListener(
+  "click",
+  () => onboardingDialog.close(),
+);
+onboardingDialog.addEventListener("close", () => {
+  try {
+    window.localStorage.setItem(onboardingStorageKey, "true");
+  } catch {
+    themeStatus.textContent =
+      "Tanıtım tercihi kaydedilemedi; sayfa yenilenince yeniden gösterilebilir.";
+  }
+});
+
+try {
+  if (window.localStorage.getItem(onboardingStorageKey) !== "true") {
+    onboardingDialog.showModal();
+  }
+} catch {
+  themeStatus.textContent =
+    "Tanıtım tercihine erişilemedi; bu oturumda tanıtım penceresi gösteriliyor.";
+  onboardingDialog.showModal();
+}
