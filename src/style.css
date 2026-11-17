@@ -631,35 +631,6 @@ html[data-theme="dark"] .theme-toggle__icon--sun {
   color: #747474;
 }
 
-.intro-strip__stats {
-  display: flex;
-  align-items: center;
-  gap: 1.8rem;
-}
-
-.intro-strip__stats > div {
-  display: grid;
-  gap: 0.25rem;
-}
-
-.intro-strip__stats strong {
-  font-family: var(--heading);
-  font-size: 1.6rem;
-  font-weight: 700;
-  letter-spacing: -0.07em;
-}
-
-.intro-strip__stats span:not(.intro-strip__divider) {
-  color: var(--muted);
-  font-size: 0.66rem;
-}
-
-.intro-strip__divider {
-  width: 1px;
-  height: 34px;
-  background: var(--line);
-}
-
 .section {
   max-width: 1440px;
   margin: 0 auto;
@@ -1553,10 +1524,6 @@ html[data-theme="dark"] .theme-toggle__icon--sun {
   .intro-strip > p {
     max-width: 430px;
     font-size: 1.35rem;
-  }
-
-  .intro-strip__stats {
-    gap: 1.2rem;
   }
 
   .section,
