@@ -52,7 +52,7 @@ function applyTheme(theme: Theme, persist = false): void {
   themeToggle.setAttribute("aria-pressed", String(isDark));
   themeToggle.setAttribute("aria-label", nextLabel);
   themeToggle.title = nextLabel;
-  themeColor?.setAttribute("content", isDark ? "#101815" : "#f6f5f0");
+  themeColor?.setAttribute("content", isDark ? "#080d16" : "#f0f0f0");
 
   if (!persist) return;
 
