@@ -1648,6 +1648,13 @@ html[data-theme="dark"] .theme-toggle__icon--sun {
   gap: 1rem;
 }
 
+.signed-in-identity {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.45rem;
+}
+
 .signed-in-name {
   max-width: 140px;
   overflow: hidden;
@@ -1655,6 +1662,19 @@ html[data-theme="dark"] .theme-toggle__icon--sun {
   font-size: 0.72rem;
   font-weight: 700;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-badge {
+  flex: 0 0 auto;
+  padding: 0.28rem 0.5rem;
+  border: 1px solid #444;
+  border-radius: 999px;
+  color: #fff;
+  background: #292929;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
   white-space: nowrap;
 }
 
@@ -2248,6 +2268,11 @@ html[data-theme="dark"] .theme-toggle__icon--sun {
 
   .signed-in-name {
     display: none;
+  }
+
+  .admin-badge {
+    padding: 0.24rem 0.4rem;
+    font-size: 0.53rem;
   }
 
   .group-chat {
@@ -3434,6 +3459,12 @@ html[data-theme="dark"] .site-header {
 html[data-theme="dark"] .site-nav a,
 html[data-theme="dark"] .signed-in-name {
   color: #b4bac6;
+}
+
+html[data-theme="dark"] .admin-badge {
+  border-color: #b7c8e5;
+  color: #0b1220;
+  background: #c9d9f3;
 }
 
 html[data-theme="dark"] .menu-button,

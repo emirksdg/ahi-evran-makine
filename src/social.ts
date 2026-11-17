@@ -188,6 +188,7 @@ export function initializeSocialCommunity(): void {
   const signedInControls =
     requiredElement<HTMLElement>("#signed-in-controls");
   const signedInName = requiredElement<HTMLElement>("#signed-in-name");
+  const adminBadge = requiredElement<HTMLElement>("#admin-badge");
   const notificationsButton = requiredElement<HTMLButtonElement>(
     "#notifications-button",
   );
@@ -1617,6 +1618,7 @@ export function initializeSocialCommunity(): void {
     if (notificationsDialog.open) notificationsDialog.close();
     if (blockedUsersDialog.open) blockedUsersDialog.close();
     moderator = false;
+    adminBadge.hidden = true;
     moderationQueueButton.hidden = true;
     siteFeedbackQueueButton.hidden = true;
     user = nextUser;
@@ -1642,6 +1644,7 @@ export function initializeSocialCommunity(): void {
       communityMessage.textContent =
         "Paylaşımları görmek ve topluluğa katılmak için e-posta ile hesap oluşturup giriş yap. Kayıt herkese açıktır; bu yöntem üniversite öğrenciliğini doğrulamaz.";
       signedInName.textContent = "";
+      adminBadge.hidden = true;
       renderPosts();
       return;
     }
@@ -1673,6 +1676,7 @@ export function initializeSocialCommunity(): void {
       } catch (error) {
         setStatus(describeError(error));
       }
+      adminBadge.hidden = !moderator;
       moderationQueueButton.hidden = !moderator;
       siteFeedbackQueueButton.hidden = !moderator;
       stopCommunityWatch = watchCommunity(() => {
